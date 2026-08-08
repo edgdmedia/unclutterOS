@@ -1,0 +1,262 @@
+import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { Video, Calendar, Check, Search } from 'lucide-react';
+import { useBrand } from '@unclutteros/ui';
+import { api, TENANT_SLUG } from '../utils/apiClient';
+
+type PortalTab = 'upcoming' | 'past' | 'payments';
+
+type PortalSession = {
+  id: string;
+  serviceTitle: string;
+  startsAt: string;
+  endsAt: string;
+  status: string;
+  priceKobo: string;
+  therapistName: string;
+};
+
+type PortalPayload = {
+  clientName: string;
+  upcoming: PortalSession[];
+  past: PortalSession[];
+};
+
+function formatMoney(priceKobo: string) {
+  return `₦${(Number(priceKobo) / 100).toLocaleString('en-NG')}`;
+}
+
+function formatDateParts(startsAt: string) {
+  const date = new Date(startsAt);
+  return {
+    day: new Intl.DateTimeFormat('en-US', { weekday: 'short' }).format(date).toUpperCase(),
+    date: new Intl.DateTimeFormat('en-US', { day: '2-digit' }).format(date),
+    month: new Intl.DateTimeFormat('en-US', { month: 'short' }).format(date).toUpperCase(),
+  };
+}
+
+function formatTimeRange(startsAt: string, endsAt: string) {
+  const start = new Date(startsAt);
+  const end = new Date(endsAt);
+  return `${new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit' }).format(start)} — ${new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit' }).format(end)}`;
+}
+
+function DateTile({ startsAt, size = 'md' }: { startsAt: string; size?: 'md' | 'lg' }) {
+  const parts = formatDateParts(startsAt);
+  const cls = size === 'lg' ? 'w-[86px] rounded-[20px] py-[14px]' : 'w-[54px] rounded-[16px] py-[9px]';
+  return (
+    <div className={`${cls} flex-none text-center bg-[rgba(255,255,255,0.1)] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.18)]`}>
+      <div className="text-[9.5px] font-black tracking-[0.1em] uppercase text-[#E3B341]">{parts.day}</div>
+      <div className={`${size === 'lg' ? 'text-[30px]' : 'text-[19px]'} font-extrabold leading-none text-white`}>{parts.date}</div>
+      <div className="mt-0.5 text-[10.5px] font-black tracking-[0.08em] uppercase text-[#E3B341]">{parts.month}</div>
+    </div>
+  );
+}
+
+export function ClientPortalPage() {
+  const brand = useBrand();
+  const primary = brand.primaryColor || '#0F3A53';
+
+  const [tab, setTab] = useState<PortalTab>('upcoming');
+  const [email, setEmail] = useState('adaeze@email.com');
+  const [lookupEmail, setLookupEmail] = useState('adaeze@email.com');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [hasReviewForm, setHasReviewForm] = useState(false);
+  const [portal, setPortal] = useState<PortalPayload>({ clientName: '', upcoming: [], past: [] });
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadReviewAvailability() {
+      try {
+        const forms = await api.get<Array<{ id: string }>>('/v1/intake/public/forms?targetType=REVIEW');
+        if (!cancelled) setHasReviewForm(forms.length > 0);
+      } catch {
+        if (!cancelled) setHasReviewForm(false);
+      }
+    }
+
+    void loadReviewAvailability();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    void loadPortal(lookupEmail);
+  }, []);
+
+  async function loadPortal(targetEmail: string) {
+    setLoading(true);
+    setError(null);
+    try {
+      const payload = await api.get<PortalPayload>(`/v1/consult/public/client-portal?email=${encodeURIComponent(targetEmail)}`);
+      setPortal(payload);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to load portal');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const nextSession = portal.upcoming[0] || null;
+  const initials = (portal.clientName || 'Client')
+    .split(' ')
+    .slice(0, 2)
+    .map((part) => part.charAt(0).toUpperCase())
+    .join('') || 'CL';
+
+  const tabs: Array<{ key: PortalTab; label: string }> = [
+    { key: 'upcoming', label: 'Upcoming' },
+    { key: 'past', label: 'Past sessions' },
+    { key: 'payments', label: 'Payments' },
+  ];
+
+  return (
+    <div className="min-h-screen bg-[#F6F8FA] text-[#0F172A] font-outfit flex flex-col">
+      <header className="h-[72px] shrink-0 flex items-center px-8 gap-3" style={{ backgroundColor: primary }}>
+        <div className="h-[34px] w-[34px] rounded-[11px] bg-[#E3B341] text-[#0F172A] font-extrabold text-[13px] flex items-center justify-center">
+          JS
+        </div>
+        <span className="text-[16.5px] font-semibold text-white">{brand.name}</span>
+        <div className="ml-auto flex items-center gap-4">
+          <div className="h-[34px] w-[34px] rounded-full bg-white/15 text-white text-[12px] font-extrabold flex items-center justify-center">
+            {initials}
+          </div>
+          <span className="text-[13.5px] font-semibold text-white">{portal.clientName || 'Client portal'}</span>
+        </div>
+      </header>
+
+      <main className="flex-1 overflow-auto">
+        <div className="max-w-[1080px] mx-auto p-[30px_34px_40px] flex flex-col gap-5">
+          <div>
+            <span className="text-[9px] font-black tracking-[0.22em] uppercase text-[#94A3B8] block">YOUR SESSIONS</span>
+            <h1 className="mt-1 text-[28px] font-bold tracking-[-0.03em] text-[#0F172A]">{portal.clientName ? `Hello, ${portal.clientName.split(' ')[0]}` : 'Client portal'}</h1>
+          </div>
+
+          <div className="rounded-[22px] bg-white border border-[#E2E8F0] p-5 flex items-end gap-4">
+            <div className="flex-1 space-y-1.5">
+              <label className="text-[11.5px] font-bold text-[#475569]">Email you used to book</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                className="w-full h-[46px] px-3.5 rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-[14px] font-medium text-[#0F172A] outline-none focus:bg-white focus:border-[#94A3B8]"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setLookupEmail(email);
+                void loadPortal(email);
+              }}
+              className="h-[46px] px-5 rounded-[14px] text-white text-[13px] font-bold flex items-center gap-2"
+              style={{ backgroundColor: primary }}
+            >
+              <Search className="h-4 w-4" />
+              Load portal
+            </button>
+          </div>
+
+          {error ? <div className="rounded-[18px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">{error}</div> : null}
+
+          {loading ? (
+            <div className="rounded-[24px] border border-[#E2E8F0] bg-white px-6 py-10 text-sm font-medium text-[#64748B]">Loading your sessions...</div>
+          ) : nextSession ? (
+            <div className="rounded-[24px] p-[26px_28px] flex items-center gap-6 shadow-[0_14px_40px_rgba(15,58,83,0.22)]" style={{ background: `linear-gradient(135deg,${primary},#1B5375)` }}>
+              <DateTile startsAt={nextSession.startsAt} size="lg" />
+              <div className="flex-1 min-w-0">
+                <span className="text-[9px] font-black tracking-[0.22em] uppercase text-[#E3B341] block">YOUR NEXT SESSION</span>
+                <h2 className="mt-1 text-[22px] font-bold tracking-[-0.02em] text-white">{formatTimeRange(nextSession.startsAt, nextSession.endsAt)}</h2>
+                <p className="mt-1 text-[13.5px] font-medium text-[#CBD5E1]">{nextSession.serviceTitle} · with {nextSession.therapistName}</p>
+              </div>
+              <div className="flex gap-3 shrink-0">
+                <button className="h-[48px] px-5 rounded-[16px] bg-transparent border border-[rgba(255,255,255,0.22)] text-white text-[13.5px] font-bold hover:bg-white/10 cursor-pointer">
+                  Reschedule
+                </button>
+                <button className="h-[48px] px-5 rounded-[16px] bg-[#E3B341] text-[#0F172A] text-[13.5px] font-extrabold flex items-center gap-2 shadow-[0_8px_22px_rgba(227,179,65,0.35)] hover:brightness-105 cursor-pointer">
+                  <Video className="h-4 w-4" />
+                  Join session
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-[24px] border border-dashed border-[#CBD5E1] bg-white px-6 py-10 text-sm font-medium text-[#64748B]">
+              No upcoming sessions found for {lookupEmail}.
+            </div>
+          )}
+
+          <div className="flex gap-1.5 p-[5px] bg-[#EEF2F7] rounded-[12px] w-fit">
+            {tabs.map((item) => (
+              <button
+                key={item.key}
+                onClick={() => setTab(item.key)}
+                className={`h-[36px] px-4 rounded-[10px] text-[12.5px] font-bold transition-all cursor-pointer ${
+                  tab === item.key ? 'bg-white text-[#0F172A] shadow-[0_2px_8px_rgba(15,23,42,0.1)]' : 'text-[#64748B] hover:text-[#0F172A]'
+                }`}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+
+          {tab === 'upcoming' && (
+            <div className="bg-white rounded-[22px] border border-[#E2E8F0] overflow-hidden">
+              {portal.upcoming.length === 0 ? (
+                <div className="px-5 py-10 text-sm font-medium text-[#64748B]">No upcoming sessions.</div>
+              ) : (
+                portal.upcoming.map((session, index) => (
+                  <div key={session.id} className={`flex items-center gap-4 px-5 py-[16px] ${index > 0 ? 'border-t border-[#F1F5F9]' : ''}`}>
+                    <DateTile startsAt={session.startsAt} />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[14px] font-bold text-[#0F172A]">{session.serviceTitle}</div>
+                      <div className="text-[12px] text-[#64748B] font-medium">{formatTimeRange(session.startsAt, session.endsAt)} · with {session.therapistName}</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-[13.5px] font-extrabold text-[#0F172A]">{formatMoney(session.priceKobo)}</div>
+                      <div className="text-[11px] text-[#94A3B8] font-medium">{session.status}</div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+
+          {tab === 'past' && (
+            <div className="bg-white rounded-[22px] border border-[#E2E8F0] overflow-hidden">
+              {portal.past.length === 0 ? (
+                <div className="px-5 py-10 text-sm font-medium text-[#64748B]">No completed or past sessions yet.</div>
+              ) : (
+                portal.past.map((session, index) => (
+                  <div key={session.id} className={`flex items-center gap-4 px-5 py-[16px] ${index > 0 ? 'border-t border-[#F1F5F9]' : ''}`}>
+                    <DateTile startsAt={session.startsAt} />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[14px] font-bold text-[#0F172A]">{session.serviceTitle}</div>
+                      <div className="text-[12px] text-[#64748B] font-medium">{formatTimeRange(session.startsAt, session.endsAt)} · with {session.therapistName}</div>
+                    </div>
+                    <span className="h-[22px] px-2.5 rounded-full bg-[#ECFDF5] text-[#059669] text-[9.5px] font-black tracking-[0.06em] uppercase flex items-center gap-1">
+                      <Check className="h-3 w-3" strokeWidth={3} />
+                      {session.status}
+                    </span>
+                    {hasReviewForm && session.status === 'COMPLETED' ? (
+                      <Link to={`/booking/${TENANT_SLUG}/review`} className="text-[12.5px] font-bold text-[#0F3A53] hover:underline cursor-pointer">
+                        Leave review
+                      </Link>
+                    ) : null}
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+
+          {tab === 'payments' && (
+            <div className="rounded-[22px] border border-dashed border-[#CBD5E1] bg-white px-6 py-10 text-sm font-medium text-[#64748B]">
+              Payment history is not wired yet. Sessions above are now pulled from real bookings.
+            </div>
+          )}
+        </div>
+      </main>
+    </div>
+  );
+}

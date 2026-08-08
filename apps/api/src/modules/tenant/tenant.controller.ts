@@ -1,0 +1,129 @@
+import { Controller, Get, Post, Patch, Body, Param, Req, UseGuards } from '@nestjs/common';
+import { ApiTags, ApiOperation } from '@nestjs/swagger';
+import { TenantService } from './tenant.service';
+import { TenantRequest } from '../../common/middleware/tenant.middleware';
+
+@ApiTags('Tenant')
+@Controller('v1/tenant')
+export class TenantController {
+  constructor(private readonly tenantService: TenantService) {}
+
+  @Post('register')
+  @ApiOperation({ summary: 'Register a new practice tenant (SaaS Onboarding)' })
+  createTenant(@Body() dto: {
+    name: string;
+    slug: string;
+    customDomain?: string;
+    logoUrl?: string;
+    primaryColor?: string;
+    secondaryColor?: string;
+    currency?: string;
+  }) {
+    return this.tenantService.createTenant(dto);
+  }
+
+  @Get('public/info/:slugOrDomain')
+  @ApiOperation({ summary: 'Get public brand config & logo for client portal styling' })
+  getPublicInfo(@Param('slugOrDomain') slugOrDomain: string) {
+    return this.tenantService.getPublicTenantInfo(slugOrDomain);
+  }
+
+  @Get('public/info')
+  @ApiOperation({ summary: 'Get public brand config from resolved request host' })
+  getPublicInfoFromHost(@Req() req: TenantRequest) {
+    if (req.tenant) {
+      return {
+        ...req.tenant,
+        id: req.tenant.id.toString(),
+      };
+    }
+    return { name: 'UnclutterOS', slug: 'default', primaryColor: '#0F3A53', secondaryColor: '#E3B341' };
+  }
+
+  @Patch('brand')
+  @ApiOperation({ summary: 'Update practice brand configuration (Admin)' })
+  updateBrand(@Req() req: TenantRequest, @Body() dto: any) {
+    if (!req.tenantId) {
+      throw new Error('Tenant context required');
+    }
+    return this.tenantService.updateTenantBrand(req.tenantId, dto);
+  }
+
+  @Get('brand')
+  @ApiOperation({ summary: 'Get current practice profile + brand configuration' })
+  getBrand(@Req() req: TenantRequest) {
+    if (!req.tenantId) {
+      throw new Error('Tenant context required');
+    }
+    return this.tenantService.getTenantBrand(req.tenantId);
+  }
+
+  @Get('notifications')
+  @ApiOperation({ summary: 'Get tenant inbox notifications derived from live activity' })
+  getNotifications(@Req() req: TenantRequest) {
+    if (!req.tenantId) {
+      throw new Error('Tenant context required');
+    }
+    return this.tenantService.getNotifications(req.tenantId);
+  }
+
+  // ── Group Clinic Staff Management Endpoints ───────────────────────────────
+
+  @Get('staff')
+  @ApiOperation({ summary: 'List practice team members & receptionists' })
+  getStaff(@Req() req: TenantRequest) {
+    if (!req.tenantId) throw new Error('Tenant context required');
+    return this.tenantService.getClinicStaff(req.tenantId);
+  }
+
+  @Post('staff/invite')
+  @ApiOperation({ summary: 'Invite a new therapist, receptionist, or admin staff member' })
+  inviteStaff(@Req() req: TenantRequest, @Body() dto: { email: string; role: 'ADMIN' | 'RECEPTIONIST' | 'THERAPIST' }) {
+    if (!req.tenantId) throw new Error('Tenant context required');
+    return this.tenantService.inviteStaffMember(req.tenantId, dto);
+  }
+
+  @Patch('staff/:profileId/role')
+  @ApiOperation({ summary: 'Update staff member role & permissions' })
+  updateRole(
+    @Req() req: TenantRequest,
+    @Param('profileId') profileId: string,
+    @Body() dto: { role: 'OWNER' | 'ADMIN' | 'RECEPTIONIST' | 'THERAPIST' },
+  ) {
+    if (!req.tenantId) throw new Error('Tenant context required');
+    return this.tenantService.updateStaffRole(req.tenantId, BigInt(profileId), dto.role);
+  }
+
+  // ── Client (Patient) Endpoints ────────────────────────────────────────────
+
+  @Get('clients')
+  @ApiOperation({ summary: 'List all client (patient) profiles for the practice' })
+  getClients(@Req() req: TenantRequest) {
+    if (!req.tenantId) throw new Error('Tenant context required');
+    return this.tenantService.getClients(req.tenantId);
+  }
+
+  @Get('clients/:profileId')
+  @ApiOperation({ summary: 'Get a single client with bookings, notes, and intake' })
+  getClientById(@Req() req: TenantRequest, @Param('profileId') profileId: string) {
+    if (!req.tenantId) throw new Error('Tenant context required');
+    return this.tenantService.getClientById(req.tenantId, BigInt(profileId));
+  }
+
+  @Post('clients')
+  @ApiOperation({ summary: 'Create a new client (patient) profile' })
+  createClient(
+    @Req() req: TenantRequest,
+    @Body() dto: {
+      firstName: string;
+      lastName?: string;
+      email: string;
+      phone?: string;
+      care?: string;
+      emergency?: string;
+    },
+  ) {
+    if (!req.tenantId) throw new Error('Tenant context required');
+    return this.tenantService.createClient(req.tenantId, dto);
+  }
+}

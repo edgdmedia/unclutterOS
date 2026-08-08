@@ -1,0 +1,311 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "darwin", "darwin-arm64"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ── Multi-Tenant Core ────────────────────────────────────────────────────────
+
+model Tenant {
+  id                BigInt   @id @default(autoincrement())
+  name              String   @db.VarChar(100)
+  slug              String   @unique @db.VarChar(50) // e.g., "dr-jane" -> dr-jane.unclutteros.com
+  customDomain      String?  @unique @db.VarChar(100) // e.g., "booking.drjanetherapy.com"
+  
+  // White-Label Brand Tokens
+  logoUrl           String?
+  faviconUrl        String?
+  primaryColor      String   @default("#0F3A53") @db.VarChar(20)
+  secondaryColor    String   @default("#E3B341") @db.VarChar(20)
+  currency          String   @default("NGN") @db.VarChar(10)
+  
+  // Policies & Content
+  cancellationHours Int      @default(24)
+  shortName         String?
+  welcomeTitle      String?
+  welcomeMessage    String?
+  publicEmail       String?
+  publicPhone       String?
+  city              String?
+  address           String?
+  category          String?
+  
+  subscriptionTier  String   @default("STARTER") // "STARTER", "PRO", "CLINIC"
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  profiles          Profile[]
+  therapists        ConsultTherapistProfile[]
+  services          ConsultService[]
+  availabilities    ConsultAvailability[]
+  bookings          ConsultBooking[]
+  discountCodes     DiscountCode[]
+  pendingInvites       ConsultPendingInvite[]
+  universalForms       UniversalForm[]
+  universalSubmissions UniversalFormSubmission[]
+  clinicalNotes        ClinicalNote[]
+  bankSubaccount    BankSubaccount?
+
+  @@index([slug])
+  @@index([customDomain])
+}
+
+// ── User & Profile ─────────────────────────────────────────────────────────
+
+model User {
+  id                  BigInt    @id @default(autoincrement())
+  email               String    @unique
+  username            String    @unique
+  password            String
+  failedLoginAttempts Int       @default(0)
+  lockedUntil         DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  profiles            Profile[]
+}
+
+model Profile {
+  id              BigInt    @id @default(autoincrement())
+  tenantId        BigInt
+  userId          BigInt?
+  username        String
+  email           String
+  type            String    @default("user") // "user", "therapist", "admin"
+  role            String    @default("CLIENT") // "OWNER", "ADMIN", "RECEPTIONIST", "THERAPIST", "CLIENT"
+  permissions     String[]  @default([])
+  status          String    @default("active") // "active", "inactive", "pending"
+  firstName       String?
+  lastName        String?
+  phone           String?
+  gender          String?
+  dateOfBirth     DateTime?
+  avatarUrl       String?
+  emailVerified   Boolean   @default(false)
+  emailVerifiedAt DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  tenant                  Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user                    User?                    @relation(fields: [userId], references: [id])
+  consultTherapistProfile ConsultTherapistProfile?
+  clientBookings          ConsultBooking[]         @relation("ClientBookings")
+
+  @@unique([tenantId, email])
+  @@unique([tenantId, username])
+  @@index([tenantId, status])
+}
+
+// ── Therapist Profile ────────────────────────────────────────────────────────
+
+model ConsultTherapistProfile {
+  profileId             BigInt   @id
+  tenantId              BigInt
+  publicUsername        String?  @db.VarChar(50)
+  bookingEmail          String?
+  notificationEmail     String?
+  welcomeMessage        String?
+  specialty             String?
+  modalities            String[] @default([])
+  credentials           String?
+  yearsExperience       Int?
+  languages             String[] @default([])
+  isPublic              Boolean  @default(true)
+  acceptsGeneralBooking Boolean  @default(true)
+  videoProvider         String?  @default("JITSI") // "JITSI", "DAILY", "GOOGLE_MEET", "ZOOM"
+  dailyApiKey           String?
+  googleRefreshToken    String?
+  isVerified            Boolean  @default(true)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  tenant                Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  profile               Profile               @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  availabilities        ConsultAvailability[]
+
+  @@unique([tenantId, profileId])
+  @@unique([tenantId, publicUsername])
+  @@index([tenantId, isPublic])
+}
+
+// ── Services & Scheduling ───────────────────────────────────────────────────
+
+model ConsultService {
+  id              BigInt   @id @default(autoincrement())
+  tenantId        BigInt
+  title           String
+  description     String?
+  durationMinutes Int      @default(50)
+  priceKobo       BigInt   @default(0)
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime?
+
+  tenant          Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  availabilities  ConsultAvailability[]
+  bookings        ConsultBooking[]
+
+  @@index([tenantId, isActive])
+}
+
+model ConsultAvailability {
+  id                BigInt   @id @default(autoincrement())
+  tenantId          BigInt
+  providerProfileId BigInt
+  serviceId         BigInt?
+  startsAt          DateTime
+  endsAt            DateTime
+  channel           String   @default("VIDEO")
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  tenant            Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  therapist         ConsultTherapistProfile @relation(fields: [providerProfileId], references: [profileId], onDelete: Cascade)
+  service           ConsultService?         @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+  bookings          ConsultBooking[]
+
+  @@index([tenantId, providerProfileId, startsAt, isActive])
+}
+
+model ConsultBooking {
+  id              BigInt   @id @default(autoincrement())
+  tenantId        BigInt
+  serviceId       BigInt
+  availabilityId  BigInt
+  clientProfileId BigInt
+  status          String   @default("CONFIRMED") // "PENDING", "CONFIRMED", "COMPLETED", "CANCELLED"
+  notes           String?
+  videoRoomName   String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime?
+
+  tenant          Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  service         ConsultService      @relation(fields: [serviceId], references: [id])
+  availability    ConsultAvailability @relation(fields: [availabilityId], references: [id])
+  client          Profile             @relation("ClientBookings", fields: [clientProfileId], references: [id])
+  formSubmissions UniversalFormSubmission[]
+  clinicalNotes   ClinicalNote[]
+
+  @@index([tenantId, clientProfileId])
+  @@index([tenantId, status])
+}
+
+model DiscountCode {
+  id              BigInt    @id @default(autoincrement())
+  tenantId        BigInt
+  code            String
+  discountPercent Int
+  maxUses         Int?
+  usedCount       Int       @default(0)
+  expiresAt       DateTime?
+  createdAt       DateTime  @default(now())
+
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, code])
+}
+
+model ConsultPendingInvite {
+  id         BigInt   @id @default(autoincrement())
+  tenantId   BigInt
+  email      String
+  role       String   @default("THERAPIST") // "ADMIN", "RECEPTIONIST", "THERAPIST"
+  claimToken String   @unique
+  sentAt     DateTime @default(now())
+  expiresAt  DateTime
+
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, email])
+}
+
+// ── Universal Form & Assessment Builder Engine ───────────────────────────
+
+model UniversalForm {
+  id          BigInt   @id @default(autoincrement())
+  tenantId    BigInt
+  title       String
+  description String?
+  targetType  String   @default("INTAKE") // "INTAKE", "ASSESSMENT", "FEEDBACK", "CONSENT", "REVIEW"
+  schemaJson  Json     // Field array: { id, label, type: 'text'|'textarea'|'single_choice'|'multiple_choice'|'scale'|'signature'|'file_upload', required, options }
+  reviewPublicationMode String @default("MANUAL") // "MANUAL", "AUTO"
+  reviewerDisplayMode   String @default("FIRST_NAME") // "FIRST_NAME", "ANONYMOUS"
+  isDefault   Boolean  @default(false)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant      Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  submissions UniversalFormSubmission[]
+
+  @@index([tenantId, targetType])
+}
+
+model UniversalFormSubmission {
+  id              BigInt   @id @default(autoincrement())
+  tenantId        BigInt
+  formId          BigInt
+  bookingId       BigInt?
+  clientProfileId BigInt
+  targetType      String   @default("INTAKE")
+  status          String   @default("UNREAD") // "UNREAD", "REVIEWED", "PUBLISHED", "HIDDEN"
+  answersJson     Json     // Key-value map of question ID -> answer or signature data
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime?
+  reviewedAt      DateTime?
+  publishedAt     DateTime?
+
+  tenant          Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  form            UniversalForm   @relation(fields: [formId], references: [id], onDelete: Cascade)
+  booking         ConsultBooking? @relation(fields: [bookingId], references: [id])
+
+  @@index([tenantId, bookingId])
+  @@index([tenantId, clientProfileId])
+}
+
+// ── Clinical Notes & SOAP Records ──────────────────────────────────────────
+
+model ClinicalNote {
+  id              BigInt   @id @default(autoincrement())
+  tenantId        BigInt
+  bookingId       BigInt?
+  clientProfileId BigInt
+  authorProfileId BigInt
+  subjective      String?  @db.Text
+  objective       String?  @db.Text
+  assessment      String?  @db.Text
+  plan            String?  @db.Text
+  diagnosisCode   String?
+  isLocked        Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  tenant          Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  booking         ConsultBooking? @relation(fields: [bookingId], references: [id])
+
+  @@index([tenantId, bookingId])
+  @@index([tenantId, clientProfileId])
+}
+
+// ── Bank Subaccount & Payout Billing ───────────────────────────────────────
+
+model BankSubaccount {
+  id               BigInt   @id @default(autoincrement())
+  tenantId         BigInt   @unique
+  bankCode         String
+  bankName         String
+  accountNumber    String
+  accountName      String
+  paystackCode     String?
+  isVerified       Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  tenant           Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}

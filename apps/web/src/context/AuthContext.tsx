@@ -1,0 +1,118 @@
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { api, setSessionExpiredHandler } from '../utils/apiClient';
+
+interface AuthProfile {
+  id: string;
+  email: string;
+  firstName?: string;
+  lastName?: string;
+  username?: string;
+  type: string;
+  status: string;
+  avatarUrl?: string;
+  tenantId?: string;
+}
+
+interface AuthContextValue {
+  profile: AuthProfile | null;
+  isLoading: boolean;
+  isAuthenticated: boolean;
+  login: (email: string, password: string) => Promise<void>;
+  logout: () => Promise<void>;
+}
+
+const AuthContext = createContext<AuthContextValue | null>(null);
+
+const PROFILE_KEY = 'unclutter_profile';
+const PROFILE_VERSION = 2;
+
+function readCachedProfile(): AuthProfile | null {
+  try {
+    const raw = localStorage.getItem(PROFILE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed?.__v !== PROFILE_VERSION) return null;
+    return parsed.profile as AuthProfile;
+  } catch {
+    return null;
+  }
+}
+
+function cacheProfile(profile: AuthProfile | null): void {
+  if (!profile) {
+    localStorage.removeItem(PROFILE_KEY);
+    return;
+  }
+  localStorage.setItem(PROFILE_KEY, JSON.stringify({ __v: PROFILE_VERSION, profile }));
+}
+
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [profile, setProfile] = useState<AuthProfile | null>(readCachedProfile);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // The access token is an httpOnly cookie, so on a cold load we verify the
+  // session by hitting /v1/auth/status (which also rotates nothing — the
+  // refresh cookie silently restores the access cookie when needed).
+  useEffect(() => {
+    let active = true;
+    api
+      .get<AuthProfile>('/v1/auth/status')
+      .then((p) => {
+        if (!active) return;
+        setProfile(p);
+        cacheProfile(p);
+      })
+      .catch(() => {
+        if (!active) return;
+        setProfile(null);
+        cacheProfile(null);
+      })
+      .finally(() => {
+        if (active) setIsLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  // Global session-expired hook: called by apiClient when a refresh fails.
+  useEffect(() => {
+    setSessionExpiredHandler(() => {
+      setProfile(null);
+      cacheProfile(null);
+    });
+  }, []);
+
+  const login = useCallback(async (email: string, password: string) => {
+    const res = await api.post<{ profile: AuthProfile }>('/v1/auth/login', { email, password });
+    setProfile(res.profile);
+    cacheProfile(res.profile);
+  }, []);
+
+  const logout = useCallback(async () => {
+    setProfile(null);
+    cacheProfile(null);
+    // Clear the httpOnly cookies server-side.
+    await api.post<{ success: boolean }>('/v1/auth/logout', {});
+  }, []);
+
+  return (
+    <AuthContext.Provider
+      value={{
+        profile,
+        isLoading,
+        isAuthenticated: !!profile,
+        login,
+        logout,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
+}
+
+export function useAuth(): AuthContextValue {
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error('useAuth must be used inside <AuthProvider>');
+  return ctx;
+}

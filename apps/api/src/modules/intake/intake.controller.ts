@@ -1,0 +1,105 @@
+import { Controller, Get, Post, Patch, Body, Param, Query, Req, UseGuards } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { IntakeService } from './intake.service';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { TenantRequest } from '../../common/middleware/tenant.middleware';
+
+@ApiTags('Intake')
+@Controller('v1/intake')
+export class IntakeController {
+  constructor(private readonly intakeService: IntakeService) {}
+
+  @Get('public/forms')
+  @ApiOperation({ summary: 'Get intake questionnaires for client portal' })
+  getPublicForms(@Req() req: TenantRequest, @Query('targetType') targetType?: string) {
+    if (!req.tenantId) throw new Error('Practice tenant context required');
+    return this.intakeService.getPublicForms(req.tenantId, targetType);
+  }
+
+  @Get('public/reviews')
+  @ApiOperation({ summary: 'Get published public practice reviews' })
+  getPublicReviews(@Req() req: TenantRequest) {
+    if (!req.tenantId) throw new Error('Practice tenant context required');
+    return this.intakeService.getPublishedReviews(req.tenantId);
+  }
+
+  @Get('forms')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'List forms for the current tenant' })
+  getForms(@Req() req: any) {
+    return this.intakeService.getForms(BigInt(req.user.tenantId || req.tenantId));
+  }
+
+  @Get('forms/:formId')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Get a single form for editing' })
+  getFormById(@Req() req: any, @Param('formId') formId: string) {
+    return this.intakeService.getFormById(BigInt(req.user.tenantId || req.tenantId), BigInt(formId));
+  }
+
+  @Post('forms')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Create custom clinical questionnaire (Admin/Therapist)' })
+  createForm(@Req() req: any, @Body() dto: any) {
+    return this.intakeService.createCustomForm(
+      BigInt(req.user.tenantId || req.tenantId),
+      dto,
+    );
+  }
+
+  @Patch('forms/:formId')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Update an existing form' })
+  updateForm(@Req() req: any, @Param('formId') formId: string, @Body() dto: any) {
+    return this.intakeService.updateForm(
+      BigInt(req.user.tenantId || req.tenantId),
+      BigInt(formId),
+      dto,
+    );
+  }
+
+  @Post('public/submissions')
+  @ApiOperation({ summary: 'Client submit intake questionnaire answers' })
+  submitAnswers(@Req() req: TenantRequest, @Body() dto: any) {
+    if (!req.tenantId) throw new Error('Practice tenant context required');
+    return this.intakeService.submitIntakeAnswers(req.tenantId, dto);
+  }
+
+  @Get('submissions')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'List all submissions for the current tenant' })
+  getTenantSubmissions(@Req() req: any, @Query('targetType') targetType?: string) {
+    return this.intakeService.getTenantSubmissions(
+      BigInt(req.user.tenantId || req.tenantId),
+      targetType,
+    );
+  }
+
+  @Patch('submissions/:submissionId/status')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Update a submission status for queue + review publishing' })
+  updateSubmissionStatus(@Req() req: any, @Param('submissionId') submissionId: string, @Body() dto: any) {
+    return this.intakeService.updateSubmissionStatus(
+      BigInt(req.user.tenantId || req.tenantId),
+      BigInt(submissionId),
+      dto?.status || 'UNREAD',
+    );
+  }
+
+  @Get('submissions/booking/:bookingId')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Therapist view client submitted intake responses' })
+  getBookingSubmissions(@Req() req: any, @Param('bookingId') bookingId: string) {
+    return this.intakeService.getBookingSubmissions(
+      BigInt(req.user.tenantId || req.tenantId),
+      BigInt(bookingId),
+    );
+  }
+}

@@ -1,0 +1,489 @@
+import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { PrismaService } from '../../common/prisma/prisma.service';
+
+@Injectable()
+export class TenantService {
+  constructor(private readonly prisma: PrismaService) {}
+
+  async createTenant(dto: {
+    name: string;
+    slug: string;
+    customDomain?: string;
+    logoUrl?: string;
+    primaryColor?: string;
+    secondaryColor?: string;
+    currency?: string;
+  }) {
+    const slug = dto.slug.toLowerCase().trim().replace(/[^a-z0-9-]/g, '');
+    if (!slug) throw new BadRequestException('Valid practice slug is required');
+
+    const existing = await this.prisma.tenant.findUnique({ where: { slug } });
+    if (existing) throw new BadRequestException('This practice slug is already taken');
+
+    return this.prisma.tenant.create({
+      data: {
+        name: dto.name.trim(),
+        slug,
+        customDomain: dto.customDomain?.toLowerCase().trim() || null,
+        logoUrl: dto.logoUrl,
+        primaryColor: dto.primaryColor || '#0F3A53',
+        secondaryColor: dto.secondaryColor || '#E3B341',
+        currency: dto.currency || 'NGN',
+      },
+    });
+  }
+
+  async getPublicTenantInfo(slugOrDomain: string) {
+    const key = slugOrDomain.toLowerCase().trim();
+    const tenant = await this.prisma.tenant.findFirst({
+      where: {
+        OR: [
+          { slug: key },
+          { customDomain: key },
+        ],
+        isActive: true,
+      },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        customDomain: true,
+        logoUrl: true,
+        faviconUrl: true,
+        primaryColor: true,
+        secondaryColor: true,
+        currency: true,
+        shortName: true,
+        cancellationHours: true,
+        welcomeTitle: true,
+        welcomeMessage: true,
+        publicEmail: true,
+        publicPhone: true,
+        city: true,
+        address: true,
+        category: true,
+      },
+    });
+
+    if (!tenant) throw new NotFoundException('Practice not found');
+
+    return {
+      ...tenant,
+      id: tenant.id.toString(),
+    };
+  }
+
+  async updateTenantBrand(tenantId: bigint, dto: {
+    name?: string;
+    shortName?: string;
+    logoUrl?: string;
+    faviconUrl?: string;
+    primaryColor?: string;
+    secondaryColor?: string;
+    customDomain?: string;
+    cancellationHours?: number;
+    welcomeTitle?: string;
+    welcomeMessage?: string;
+    publicEmail?: string;
+    publicPhone?: string;
+    city?: string;
+    address?: string;
+    category?: string;
+  }) {
+    return this.prisma.tenant.update({
+      where: { id: tenantId },
+      data: {
+        ...(dto.name ? { name: dto.name.trim() } : {}),
+        ...(dto.shortName !== undefined ? { shortName: dto.shortName?.trim() || null } : {}),
+        ...(dto.logoUrl !== undefined ? { logoUrl: dto.logoUrl } : {}),
+        ...(dto.faviconUrl !== undefined ? { faviconUrl: dto.faviconUrl } : {}),
+        ...(dto.primaryColor ? { primaryColor: dto.primaryColor } : {}),
+        ...(dto.secondaryColor ? { secondaryColor: dto.secondaryColor } : {}),
+        ...(dto.customDomain !== undefined ? { customDomain: dto.customDomain?.toLowerCase().trim() || null } : {}),
+        ...(dto.cancellationHours !== undefined ? { cancellationHours: dto.cancellationHours } : {}),
+        ...(dto.welcomeTitle !== undefined ? { welcomeTitle: dto.welcomeTitle } : {}),
+        ...(dto.welcomeMessage !== undefined ? { welcomeMessage: dto.welcomeMessage } : {}),
+        ...(dto.publicEmail !== undefined ? { publicEmail: dto.publicEmail?.trim() || null } : {}),
+        ...(dto.publicPhone !== undefined ? { publicPhone: dto.publicPhone?.trim() || null } : {}),
+        ...(dto.city !== undefined ? { city: dto.city?.trim() || null } : {}),
+        ...(dto.address !== undefined ? { address: dto.address?.trim() || null } : {}),
+        ...(dto.category !== undefined ? { category: dto.category?.trim() || null } : {}),
+      },
+    });
+  }
+
+  async getTenantBrand(tenantId: bigint) {
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: {
+        id: true,
+        name: true,
+        shortName: true,
+        logoUrl: true,
+        primaryColor: true,
+        secondaryColor: true,
+        customDomain: true,
+        cancellationHours: true,
+        welcomeTitle: true,
+        welcomeMessage: true,
+        publicEmail: true,
+        publicPhone: true,
+        city: true,
+        address: true,
+        category: true,
+      },
+    });
+
+    if (!tenant) throw new NotFoundException('Practice tenant not found');
+    return { ...tenant, id: tenant.id.toString() };
+  }
+
+  async getNotifications(tenantId: bigint) {
+    const [bookings, submissions, invites] = await Promise.all([
+      this.prisma.consultBooking.findMany({
+        where: { tenantId },
+        include: {
+          client: { select: { firstName: true, lastName: true, email: true } },
+          availability: true,
+          service: true,
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 8,
+      }),
+      this.prisma.universalFormSubmission.findMany({
+        where: { tenantId },
+        include: { form: true },
+        orderBy: { createdAt: 'desc' },
+        take: 8,
+      }),
+      this.prisma.consultPendingInvite.findMany({
+        where: { tenantId },
+        orderBy: { sentAt: 'desc' },
+        take: 4,
+      }),
+    ]);
+
+    const clientIds = Array.from(new Set(submissions.map((submission) => submission.clientProfileId.toString()))).map((id) => BigInt(id));
+    const submissionClients = clientIds.length
+      ? await this.prisma.profile.findMany({ where: { tenantId, id: { in: clientIds } } })
+      : [];
+    const clientMap = new Map(submissionClients.map((client) => [client.id.toString(), client]));
+
+    const notifications = [
+      ...bookings.map((booking) => ({
+        id: `booking_${booking.id}`,
+        category: 'Bookings',
+        unread: booking.status !== 'COMPLETED',
+        title: `${booking.client.firstName || ''} ${booking.client.lastName || ''}`.trim() || booking.client.email,
+        body: `booked ${booking.service.title} for ${new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).format(booking.availability.startsAt)}.`,
+        time: booking.createdAt.toISOString(),
+        action: 'View booking',
+      })),
+      ...submissions.map((submission) => {
+        const client = clientMap.get(submission.clientProfileId.toString());
+        const clientName = `${client?.firstName || ''} ${client?.lastName || ''}`.trim() || client?.email || 'Client';
+        const isReview = submission.targetType === 'REVIEW';
+        return {
+          id: `submission_${submission.id}`,
+          category: isReview ? 'Messages' : 'Clinical',
+          unread: submission.status === 'UNREAD',
+          title: isReview ? 'New public review' : `${submission.form.title} submitted`,
+          body: isReview ? `${clientName} submitted a review for the practice.` : `${clientName} submitted ${submission.form.title.toLowerCase()}.`,
+          time: submission.createdAt.toISOString(),
+          action: isReview ? 'Publish' : 'Review',
+        };
+      }),
+      ...invites.map((invite) => ({
+        id: `invite_${invite.id}`,
+        category: 'Team',
+        unread: true,
+        title: invite.email,
+        body: `was invited to join the practice as ${invite.role.toLowerCase()}.`,
+        time: invite.sentAt.toISOString(),
+        action: 'View roster',
+      })),
+    ]
+      .sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())
+      .slice(0, 20);
+
+    return notifications;
+  }
+
+  // ── Group Clinic Team & Staff Management ────────────────────────────────────
+
+  async getClinicStaff(tenantId: bigint) {
+    const staff = await this.prisma.profile.findMany({
+      where: {
+        tenantId,
+        role: { in: ['OWNER', 'ADMIN', 'RECEPTIONIST', 'THERAPIST'] },
+      },
+      include: {
+        consultTherapistProfile: true,
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    return staff.map((s) => ({
+      id: s.id.toString(),
+      email: s.email,
+      firstName: s.firstName,
+      lastName: s.lastName,
+      role: s.role || 'THERAPIST',
+      status: s.status,
+      avatarUrl: s.avatarUrl,
+      isTherapist: !!s.consultTherapistProfile,
+      specialty: s.consultTherapistProfile?.specialty,
+    }));
+  }
+
+  async inviteStaffMember(tenantId: bigint, dto: { email: string; role: 'ADMIN' | 'RECEPTIONIST' | 'THERAPIST' }) {
+    const tenant = await this.prisma.tenant.findUnique({ where: { id: tenantId } });
+    if (!tenant) throw new NotFoundException('Practice tenant not found');
+
+    const tier = (tenant.subscriptionTier || 'STARTER').toUpperCase();
+
+    // STARTER (Free) tier: Cannot invite additional therapists or receptionists
+    if (tier === 'STARTER') {
+      throw new BadRequestException(
+        'Staff invitations and team features require a Pro or Group Clinic subscription plan. Upgrade your plan to invite team members.',
+      );
+    }
+
+    // PRO tier: Max receptionist/admin staff, secondary therapists require CLINIC tier
+    if (tier === 'PRO' && dto.role === 'THERAPIST') {
+      throw new BadRequestException(
+        'Multi-therapist practice management requires the Group Clinic subscription plan.',
+      );
+    }
+
+    const email = dto.email.toLowerCase().trim();
+    const claimToken = `invite-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+
+    const invite = await this.prisma.consultPendingInvite.upsert({
+      where: { tenantId_email: { tenantId, email } },
+      create: {
+        tenantId,
+        email,
+        role: dto.role || 'THERAPIST',
+        claimToken,
+        expiresAt,
+      },
+      update: {
+        role: dto.role || 'THERAPIST',
+        claimToken,
+        expiresAt,
+      },
+    });
+
+    return {
+      id: invite.id.toString(),
+      email: invite.email,
+      role: invite.role,
+      claimToken: invite.claimToken,
+      expiresAt: invite.expiresAt.toISOString(),
+      inviteUrl: `${process.env.APP_URL || 'https://unclutteros.com'}/invite/claim?token=${claimToken}`,
+    };
+  }
+
+  async updateStaffRole(tenantId: bigint, profileId: bigint, role: 'OWNER' | 'ADMIN' | 'RECEPTIONIST' | 'THERAPIST') {
+    const updated = await this.prisma.profile.update({
+      where: { id: profileId },
+      data: { role },
+    });
+
+    return { id: updated.id.toString(), role: updated.role };
+  }
+
+  // ── Client (Patient) Management ──────────────────────────────────────────────
+
+  async getClients(tenantId: bigint) {
+    const clients = await this.prisma.profile.findMany({
+      where: {
+        tenantId,
+        role: 'CLIENT',
+      },
+      include: {
+        clientBookings: {
+          include: { availability: true },
+          orderBy: { availability: { startsAt: 'desc' } },
+          take: 1,
+        },
+        _count: {
+          select: { clientBookings: true },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return clients.map((c) => {
+      const nextBooking = c.clientBookings[0];
+      const nextSession = nextBooking?.availability?.startsAt
+        ? new Intl.DateTimeFormat('en-GB', {
+            weekday: 'short',
+            day: 'numeric',
+            month: 'short',
+            hour: '2-digit',
+            minute: '2-digit',
+          }).format(nextBooking.availability.startsAt)
+        : 'None scheduled';
+
+      const initials = [
+        (c.firstName || '').charAt(0),
+        (c.lastName || '').charAt(0),
+      ]
+        .filter(Boolean)
+        .join('')
+        .toUpperCase() || '??';
+
+      return {
+        id: c.id.toString(),
+        name: `${c.firstName || ''} ${c.lastName || ''}`.trim() || c.email,
+        email: c.email,
+        phone: c.phone || '',
+        care: 'Individual Therapy',
+        sessions: c._count.clientBookings.toString(),
+        next: nextSession,
+        status: c.status === 'active' ? 'Active' : c.status === 'inactive' ? 'Paused' : 'Pending Intake',
+        initials,
+        since: new Intl.DateTimeFormat('en-GB', { month: 'short', year: 'numeric' }).format(c.createdAt),
+        emergency: '',
+        notes: [],
+        intake: [],
+      };
+    });
+  }
+
+  async getClientById(tenantId: bigint, clientProfileId: bigint) {
+    const client = await this.prisma.profile.findFirst({
+      where: { id: clientProfileId, tenantId, role: 'CLIENT' },
+      include: {
+        clientBookings: {
+          include: { service: true, availability: true },
+          orderBy: { availability: { startsAt: 'desc' } },
+        },
+      },
+    });
+
+    if (!client) throw new NotFoundException('Client not found');
+
+    const notes = await this.prisma.clinicalNote.findMany({
+      where: { tenantId, clientProfileId },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const intakeResponses = await this.prisma.universalFormSubmission.findMany({
+      where: { tenantId, clientProfileId },
+      include: { form: true },
+      orderBy: { createdAt: 'desc' },
+      take: 1,
+    });
+
+    const initials = [
+      (client.firstName || '').charAt(0),
+      (client.lastName || '').charAt(0),
+    ]
+      .filter(Boolean)
+      .join('')
+      .toUpperCase() || '??';
+
+    const intake = intakeResponses.flatMap((sub) => {
+      try {
+        const answers = sub.answersJson as Record<string, string>;
+        return Object.entries(answers).map(([q, a]) => ({ q, a }));
+      } catch {
+        return [];
+      }
+    });
+
+    return {
+      id: client.id.toString(),
+      name: `${client.firstName || ''} ${client.lastName || ''}`.trim() || client.email,
+      email: client.email,
+      phone: client.phone || '',
+      care: 'Individual Therapy',
+      sessions: client.clientBookings.length.toString(),
+      next:
+        client.clientBookings[0]?.availability?.startsAt
+          ? new Intl.DateTimeFormat('en-GB', {
+              weekday: 'short',
+              day: 'numeric',
+              month: 'short',
+              hour: '2-digit',
+              minute: '2-digit',
+            }).format(client.clientBookings[0].availability.startsAt)
+          : 'None scheduled',
+      status: client.status === 'active' ? 'Active' : client.status === 'inactive' ? 'Paused' : 'Pending Intake',
+      initials,
+      since: new Intl.DateTimeFormat('en-GB', { month: 'short', year: 'numeric' }).format(client.createdAt),
+      emergency: '',
+      notes: notes.map((n) => ({
+        id: n.id.toString(),
+        date: new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }).format(n.createdAt),
+        time: new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit' }).format(n.createdAt),
+        title: 'Clinical Session Note',
+        status: n.isLocked ? 'COMPLETED' : 'DRAFT',
+        note: n.isLocked ? 'NOTE SIGNED' : 'DRAFT',
+        subjective: n.subjective || '',
+        objective: n.objective || '',
+        assessment: n.assessment || '',
+        plan: n.plan || '',
+      })),
+      intake,
+    };
+  }
+
+  async createClient(tenantId: bigint, dto: {
+    firstName: string;
+    lastName?: string;
+    email: string;
+    phone?: string;
+    care?: string;
+    emergency?: string;
+  }) {
+    const email = dto.email.toLowerCase().trim();
+
+    const existing = await this.prisma.profile.findFirst({
+      where: { tenantId, email },
+    });
+    if (existing) throw new BadRequestException('A client with this email already exists in this practice');
+
+    const profile = await this.prisma.profile.create({
+      data: {
+        tenantId,
+        email,
+        username: email.split('@')[0] + '-' + Date.now(),
+        firstName: dto.firstName.trim(),
+        lastName: dto.lastName?.trim(),
+        phone: dto.phone?.trim(),
+        type: 'user',
+        role: 'CLIENT',
+        status: 'active',
+      },
+    });
+
+    const initials = [
+      (profile.firstName || '').charAt(0),
+      (profile.lastName || '').charAt(0),
+    ]
+      .filter(Boolean)
+      .join('')
+      .toUpperCase() || '??';
+
+    return {
+      id: profile.id.toString(),
+      name: `${profile.firstName || ''} ${profile.lastName || ''}`.trim(),
+      email: profile.email,
+      phone: profile.phone || '',
+      care: dto.care || 'Individual Therapy',
+      sessions: '0',
+      next: 'None scheduled',
+      status: 'Active',
+      initials,
+      since: new Intl.DateTimeFormat('en-GB', { month: 'short', year: 'numeric' }).format(profile.createdAt),
+      emergency: dto.emergency || '',
+      notes: [],
+      intake: [],
+    };
+  }
+}
