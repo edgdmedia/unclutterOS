@@ -7,6 +7,11 @@ echo "🚀 Starting UnclutterOS Production Deployment at $TARGET_DIR..."
 
 cd $TARGET_DIR
 
+# Copy apps/api/.env to root .env if root .env does not exist
+if [ -f "apps/api/.env" ] && [ ! -f ".env" ]; then
+    cp apps/api/.env .env
+fi
+
 # 1. Pull latest changes from git
 echo "📥 Pulling latest git updates..."
 git pull origin main
