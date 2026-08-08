@@ -99,7 +99,7 @@ export class AdminService {
     });
     if (!tenant) throw new NotFoundException('Tenant not found');
 
-    const [staff, recentBookings, recentClients] = await Promise.all([
+    const [staff, recentBookings, recentClients, bookingRows] = await Promise.all([
       this.prisma.profile.findMany({
         where: { tenantId: id, role: { in: ['OWNER', 'ADMIN', 'RECEPTIONIST', 'THERAPIST'] } },
         select: {
@@ -129,7 +129,16 @@ export class AdminService {
         orderBy: { createdAt: 'desc' },
         take: 8,
       }),
+      this.prisma.consultBooking.findMany({
+        where: { tenantId: id },
+        select: { service: { select: { priceKobo: true } } },
+      }),
     ]);
+
+    const revenueKobo = bookingRows.reduce(
+      (acc, row) => acc + (row.service?.priceKobo ?? 0n),
+      0n,
+    );
 
     return {
       id: tenant.id.toString(),
@@ -149,6 +158,7 @@ export class AdminService {
       clients: tenant._count.profiles,
       bookings: tenant._count.bookings,
       services: tenant._count.services,
+      revenueKobo: Number(revenueKobo),
       staff: staff.map((s) => ({
         id: s.id.toString(),
         email: s.email,

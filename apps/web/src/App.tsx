@@ -254,7 +254,7 @@ function PageFallback() {
 // ── Main AppLayout ─────────────────────────────────────────────────────────────
 
 function AppLayout() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { profile, isAuthenticated, isLoading } = useAuth();
   const [tenantStatus, setTenantStatus] = useState<'ACTIVE' | 'PAUSED'>('ACTIVE');
   const [primaryColor, setPrimaryColor] = useState('#0F3A53');
   const [secondaryColor, setSecondaryColor] = useState('#E3B341');
@@ -276,10 +276,16 @@ function AppLayout() {
   });
 
   // API-backed state with graceful fallback to mock data on error.
-  // Keys are null until authenticated so we don't fire 401s on the login screen.
-  const clientsKey = isAuthenticated ? '/v1/tenant/clients' : null;
-  const bookingsKey = isAuthenticated ? '/v1/consult/therapist/bookings' : null;
-  const staffKey = isAuthenticated ? '/v1/tenant/staff' : null;
+  // Keys are null until a tenant session is active: anonymous visitors on the
+  // login screen, and platform admins (no tenantId) don't fetch workspace data.
+  const location = useLocation();
+  const isAdminRoute =
+    location.pathname === '/admin' || location.pathname.startsWith('/admin/');
+
+  const hasTenantSession = !!profile?.tenantId;
+  const clientsKey = hasTenantSession && !isAdminRoute ? '/v1/tenant/clients' : null;
+  const bookingsKey = hasTenantSession && !isAdminRoute ? '/v1/consult/therapist/bookings' : null;
+  const staffKey = hasTenantSession && !isAdminRoute ? '/v1/tenant/staff' : null;
 
   const {
     data: clients,
@@ -336,10 +342,7 @@ function AppLayout() {
   const resolvedSessions = useMemo(() => sessions ?? [], [sessions]);
   const resolvedStaff = useMemo(() => staff ?? [], [staff]);
 
-  const location = useLocation();
-
   // Platform admin console — own shell, no tenant branding.
-  const isAdminRoute = location.pathname === '/admin' || location.pathname.startsWith('/admin/');
   if (isAdminRoute) {
     return <AdminShell />;
   }
