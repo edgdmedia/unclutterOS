@@ -9,13 +9,19 @@ async function bootstrap() {
 
   app.use(cookieParser());
 
-  const corsOrigins = (process.env.CORS_ORIGINS || 'http://localhost:5173')
-    .split(',')
-    .map((origin) => origin.trim())
-    .filter(Boolean);
-
   app.enableCors({
-    origin: corsOrigins,
+    origin: (origin, callback) => {
+      if (
+        !origin ||
+        origin.endsWith('unclutter.com.ng') ||
+        origin.endsWith('pages.dev') ||
+        origin.includes('localhost')
+      ) {
+        callback(null, true);
+      } else {
+        callback(null, true);
+      }
+    },
     credentials: true,
   });
 

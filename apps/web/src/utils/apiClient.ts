@@ -12,7 +12,7 @@
  *   torn down via a session-expired handler.
  */
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+const API_BASE = import.meta.env.VITE_API_URL || 'https://api.os.unclutter.com.ng';
 export const TENANT_SLUG = import.meta.env.VITE_TENANT_SLUG || 'dr-smith';
 
 const CSRF_COOKIE = 'unclutter_csrf';
