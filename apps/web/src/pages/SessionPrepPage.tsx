@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Camera, Check, MessageSquare, Mic, Video, Wifi } from 'lucide-react';
+import { ArrowLeft, Video } from 'lucide-react';
 import { Eyebrow } from '@unclutteros/ui';
 import { api } from '../utils/apiClient';
 
@@ -13,6 +13,7 @@ type PrepPayload = {
     endsAt: string;
     serviceTitle: string;
     status: string;
+    videoRoomLink: string | null;
   };
   latestNote: {
     subjective?: string | null;
@@ -87,9 +88,15 @@ export function SessionPrepPage() {
                     <h2 className="mt-1 text-[24px] font-bold tracking-[-0.02em] text-[#0F172A]">{prep.booking.clientName}</h2>
                     <p className="text-[13px] text-[#64748B] font-medium">{prep.booking.clientEmail}</p>
                   </div>
-                  <button onClick={() => navigate(`/session/${id}`)} className="h-[52px] px-6 rounded-[16px] bg-[#0F3A53] text-white font-bold text-[14px] flex items-center gap-2 shadow-[0_8px_22px_rgba(15,58,83,0.24)] hover:bg-[#0C2E42] cursor-pointer">
-                    <Video className="h-4 w-4" /> Join room
-                  </button>
+                  {prep.booking.videoRoomLink ? (
+                    <a href={prep.booking.videoRoomLink} target="_blank" rel="noreferrer" className="h-[52px] px-6 rounded-[16px] bg-[#0F3A53] text-white font-bold text-[14px] flex items-center gap-2 shadow-[0_8px_22px_rgba(15,58,83,0.24)] hover:bg-[#0C2E42] cursor-pointer">
+                      <Video className="h-4 w-4" /> Join secure video room
+                    </a>
+                  ) : (
+                    <button disabled className="h-[52px] px-6 rounded-[16px] bg-[#E2E8F0] text-[#94A3B8] font-bold text-[14px] flex items-center gap-2 cursor-not-allowed">
+                      <Video className="h-4 w-4" /> No video link yet
+                    </button>
+                  )}
                 </div>
 
                 <div className="bg-white rounded-[24px] border border-[#E2E8F0] p-[24px_26px]">
@@ -119,18 +126,15 @@ export function SessionPrepPage() {
 
               <div className="flex flex-col gap-4">
                 <div className="bg-[#0F172A] rounded-[24px] p-[22px_24px] shadow-[0_14px_40px_rgba(15,23,42,0.22)]">
-                  <span className="text-[9px] font-black tracking-[0.22em] uppercase text-[#E3B341] block">DEVICE CHECK</span>
-                  <div className="mt-3 flex flex-col gap-2.5 text-white text-[12.5px] font-semibold">
-                    <div className="flex items-center gap-3"><Camera className="h-4 w-4" /> Camera <span className="ml-auto text-[#34D399] flex items-center gap-1"><Check className="h-3.5 w-3.5" />Working</span></div>
-                    <div className="flex items-center gap-3"><Mic className="h-4 w-4" /> Microphone <span className="ml-auto text-[#34D399] flex items-center gap-1"><Check className="h-3.5 w-3.5" />Working</span></div>
-                    <div className="flex items-center gap-3"><Wifi className="h-4 w-4" /> Connection <span className="ml-auto text-[#E3B341]">Stable</span></div>
-                  </div>
-                </div>
-
-                <div className="bg-white rounded-[24px] border border-[#E2E8F0] p-[22px_24px] shadow-[0_8px_26px_rgba(15,23,42,0.05)]">
-                  <div className="text-[13.5px] font-bold text-[#0F172A] flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-[#059669]" /> Waiting room</div>
-                  <p className="mt-1 text-[12px] text-[#94A3B8] font-medium">No realtime waiting-room signal wired yet.</p>
-                  <button className="mt-3.5 w-full h-[40px] rounded-[13px] bg-white border border-[#E2E8F0] text-[#334155] text-[12.5px] font-bold flex items-center justify-center gap-2 hover:bg-[#F1F5F9] cursor-pointer"><MessageSquare className="h-4 w-4" /> Send a message</button>
+                  <span className="text-[9px] font-black tracking-[0.22em] uppercase text-[#E3B341] block">SECURE VIDEO ROOM</span>
+                  <p className="mt-2 text-[12.5px] text-slate-300 font-medium leading-relaxed">This session runs on your practice's secure video provider. Open the room link to start — it opens in a new tab.</p>
+                  {prep.booking.videoRoomLink ? (
+                    <a href={prep.booking.videoRoomLink} target="_blank" rel="noreferrer" className="mt-4 w-full h-[44px] rounded-[13px] bg-[#E3B341] text-[#0F172A] text-[13px] font-extrabold flex items-center justify-center gap-2 hover:brightness-105 cursor-pointer">
+                      <Video className="h-4 w-4" /> Open video room
+                    </a>
+                  ) : (
+                    <div className="mt-4 w-full h-[44px] rounded-[13px] bg-white/10 text-slate-400 text-[13px] font-bold flex items-center justify-center gap-2">No video link available yet</div>
+                  )}
                 </div>
 
                 {prep.nextBooking ? <div className="bg-white rounded-[24px] border border-[#E2E8F0] p-[22px_24px] shadow-[0_8px_26px_rgba(15,23,42,0.05)]"><Eyebrow>AFTER THIS</Eyebrow><div className="mt-3 text-[13.5px] font-bold text-[#0F172A]">{prep.nextBooking.clientName}</div><div className="text-[12px] text-[#94A3B8] font-medium">{formatDateTime(prep.nextBooking.startsAt)} — {formatDateTime(prep.nextBooking.endsAt)}</div></div> : null}

@@ -29,6 +29,16 @@ export class BillingController {
     );
   }
 
+  @Get('summary')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Get combined billing summary + derived history' })
+  getSummary(@Req() req: any) {
+    return this.billingService.getBillingSummary(
+      BigInt(req.user.tenantId || req.tenantId),
+    );
+  }
+
   @Post('bank-subaccount')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('access-token')

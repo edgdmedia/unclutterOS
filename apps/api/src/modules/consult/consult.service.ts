@@ -220,6 +220,7 @@ export class ConsultService {
 
     return slots.map((s) => ({
       id: s.id.toString(),
+      serviceId: s.serviceId?.toString() || null,
       providerProfileId: s.providerProfileId.toString(),
       therapistName: `${s.therapist.profile.firstName || ''} ${s.therapist.profile.lastName || ''}`.trim() || 'Therapist',
       avatarUrl: s.therapist.profile.avatarUrl,
@@ -518,6 +519,7 @@ export class ConsultService {
       status: booking.status,
       priceKobo: booking.service.priceKobo.toString(),
       therapistName: `${booking.availability.therapist.profile.firstName || ''} ${booking.availability.therapist.profile.lastName || ''}`.trim() || 'Your therapist',
+      videoRoomLink: booking.videoRoomName ? (booking.videoRoomName.startsWith('http') ? booking.videoRoomName : `https://meet.jit.si/${booking.videoRoomName}`) : null,
     }));
 
     const upcoming = mapped.filter((booking) => new Date(booking.startsAt) >= now && booking.status !== 'CANCELLED');

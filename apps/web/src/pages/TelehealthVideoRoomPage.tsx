@@ -100,7 +100,7 @@ export function TelehealthVideoRoomPage() {
         <>
           <header className="h-[66px] bg-[#0B1220]/90 backdrop-blur-md border border-white/10 rounded-[20px] px-6 flex items-center justify-between shrink-0">
             <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2 bg-emerald-950/60 border border-emerald-500/30 px-3 py-1 rounded-full text-[#34D399] text-[11.5px] font-bold"><span className="h-2 w-2 rounded-full bg-[#34D399] animate-pulse" /><span>LIVE SESSION</span></div>
+              <div className="flex items-center gap-2 bg-white/5 border border-white/10 px-3 py-1 rounded-full text-slate-300 text-[11.5px] font-bold"><span>ROOM PREVIEW</span></div>
               <div><h1 className="text-[15px] font-semibold text-white leading-tight">{payload.booking.clientName}</h1><p className="text-[11.5px] text-[#64748B]">{payload.booking.serviceTitle} · {new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit' }).format(new Date(payload.booking.startsAt))}</p></div>
             </div>
             <div className="flex items-center gap-3"><span className="h-[28px] px-3 rounded-full bg-[#34D399]/12 text-[#34D399] text-[10.5px] font-black tracking-wider uppercase border border-[#34D399]/30 flex items-center gap-1.5"><ShieldCheck className="h-3.5 w-3.5" /><span>ROOM CONTEXT REAL</span></span></div>

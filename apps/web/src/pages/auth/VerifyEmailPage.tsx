@@ -37,10 +37,10 @@ export function VerifyEmailPage() {
       </div>
 
       <Link
-        to="/dashboard"
+        to="/portal"
         className="mt-[22px] w-full h-[54px] rounded-[14px] bg-[#0F3A53] text-white text-[15px] font-bold inline-flex items-center justify-center gap-[10px] shadow-[0_10px_26px_rgba(15,58,83,0.26)] transition-[filter] hover:brightness-110"
       >
-        <span>Proceed to dashboard</span>
+        <span>Proceed to portal</span>
         <ArrowRight className="h-[17px] w-[17px]" strokeWidth={2.4} />
       </Link>
     </AuthCardShell>

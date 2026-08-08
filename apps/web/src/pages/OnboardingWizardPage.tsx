@@ -32,7 +32,7 @@ export function OnboardingWizardPage() {
 
         <span className="text-xs font-bold text-[#64748B]">Step {step} of 3</span>
 
-        <button onClick={() => navigate('/dashboard')} className="text-xs font-bold text-[#64748B] hover:text-[#0F172A]">
+        <button onClick={() => navigate('/portal')} className="text-xs font-bold text-[#64748B] hover:text-[#0F172A]">
           Finish later
         </button>
       </header>
@@ -227,7 +227,7 @@ export function OnboardingWizardPage() {
                 <span>Back</span>
               </button>
               <button
-                onClick={() => navigate('/dashboard')}
+                onClick={() => navigate('/portal')}
                 className="h-[44px] px-6 rounded-[14px] bg-[#E3B341] text-[#0F172A] font-extrabold text-xs shadow-lg hover:brightness-105"
               >
                 Go to my dashboard

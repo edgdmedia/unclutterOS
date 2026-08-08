@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { Download, Video, ChevronRight, FileText, Printer, Lock, Plus, X, Loader2 } from 'lucide-react';
+import { Download, ChevronRight, FileText, Printer, Lock, Plus, X, Loader2 } from 'lucide-react';
 import { Eyebrow, Card, StatusBadge, Button } from '@unclutteros/ui';
 import { useBrand } from '@unclutteros/ui';
 import { api } from '../utils/apiClient';
@@ -148,14 +148,6 @@ export function ClientDetailPage({ clients, setClients }: ClientDetailPageProps)
             <Plus className="h-4 w-4" />
             <span>New note</span>
           </button>
-          <Link
-            to="/session/clx91session1"
-            className="os-brand-btn h-[40px] px-5 rounded-[14px] font-bold text-xs flex items-center gap-1.5 cursor-pointer text-white"
-            style={{ backgroundColor: primaryColor }}
-          >
-            <Video className="h-4 w-4" />
-            <span>Start session</span>
-          </Link>
         </div>
       </header>
 

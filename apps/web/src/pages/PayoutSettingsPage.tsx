@@ -5,11 +5,13 @@ import { useBrand } from '@unclutteros/ui';
 import { api } from '../utils/apiClient';
 
 type PayoutAccount = { bankCode: string; bankName: string; accountNumber: string; accountName: string; isVerified: boolean } | null;
+type BillingSummary = { bankSubaccount: PayoutAccount; history: Array<{ date: string; title: string; detail: string; type: string }> };
 
 export function PayoutSettingsPage() {
   const brand = useBrand();
   const primaryColor = brand.primaryColor || '#0F3A53';
   const [account, setAccount] = useState<PayoutAccount>(null);
+  const [history, setHistory] = useState<BillingSummary['history']>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -24,14 +26,15 @@ export function PayoutSettingsPage() {
     async function loadAccount() {
       setLoading(true);
       try {
-        const data = await api.get<PayoutAccount>('/v1/billing/bank-subaccount');
+        const data = await api.get<BillingSummary>('/v1/billing/summary');
         if (cancelled) return;
-        setAccount(data);
-        if (data) {
-          setTempBankName(data.bankName);
-          setTempBankCode(data.bankCode);
-          setTempAccountNumber(data.accountNumber);
-          setTempAccountName(data.accountName);
+        setAccount(data.bankSubaccount);
+        setHistory(data.history.filter((item) => item.type === 'payout' || item.type === 'system'));
+        if (data.bankSubaccount) {
+          setTempBankName(data.bankSubaccount.bankName);
+          setTempBankCode(data.bankSubaccount.bankCode);
+          setTempAccountNumber(data.bankSubaccount.accountNumber);
+          setTempAccountName(data.bankSubaccount.accountName);
         }
       } catch (err) {
         if (!cancelled) setError(err instanceof Error ? err.message : 'Unable to load payout account');
@@ -48,13 +51,15 @@ export function PayoutSettingsPage() {
     setSaving(true);
     setError(null);
     try {
-      const saved = await api.post<Exclude<PayoutAccount, null>>('/v1/billing/bank-subaccount', {
+      await api.post<Exclude<PayoutAccount, null>>('/v1/billing/bank-subaccount', {
         bankCode: tempBankCode,
         bankName: tempBankName,
         accountNumber: tempAccountNumber,
         accountName: tempAccountName,
       });
-      setAccount(saved);
+      const refreshed = await api.get<BillingSummary>('/v1/billing/summary');
+      setAccount(refreshed.bankSubaccount);
+      setHistory(refreshed.history.filter((item) => item.type === 'payout' || item.type === 'system'));
       setShowBankModal(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to save payout account');
@@ -95,6 +100,17 @@ export function PayoutSettingsPage() {
             </div>
           </Card>
         )}
+
+        <Card padding="p-[24px_26px]" className="max-w-[560px] space-y-3 bg-white border border-slate-100">
+          <div className="text-sm font-bold text-[#0F172A]">Payout history</div>
+          {history.map((item) => (
+            <div key={`${item.type}_${item.date}`} className="rounded-[16px] bg-[#F8FAFC] border border-[#E2E8F0] px-4 py-3">
+              <div className="text-[12px] font-bold text-[#0F172A]">{item.title}</div>
+              <div className="text-[11px] text-[#94A3B8] font-medium">{new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(item.date))}</div>
+              <div className="mt-1 text-[12px] text-[#475569] font-medium">{item.detail}</div>
+            </div>
+          ))}
+        </Card>
       </main>
 
       {showBankModal && (

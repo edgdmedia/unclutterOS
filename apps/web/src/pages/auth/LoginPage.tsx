@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ArrowRight, Eye, EyeOff, Loader2, Lock, Mail } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { AuthSplitShell } from '../../components/AuthSplitShell';
@@ -7,9 +7,10 @@ import { AuthField, authInputCls } from '../../components/AuthField';
 
 export function LoginPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { login, isLoading } = useAuth();
   // Pre-filled with seeded dev credentials for easy local testing
-  const [email, setEmail] = useState('dr.jane@smiththerapy.ng');
+  const [email, setEmail] = useState((location.state as { email?: string } | null)?.email || 'dr.jane@smiththerapy.ng');
   const [password, setPassword] = useState('password123');
   const [showPassword, setShowPassword] = useState(false);
   const [remember, setRemember] = useState(true);
@@ -19,8 +20,8 @@ export function LoginPage() {
     e.preventDefault();
     setError(null);
     try {
-      await login(email, password);
-      navigate('/dashboard');
+      const profile = await login(email, password);
+      navigate(profile.type === 'user' ? '/dashboard' : '/portal');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed. Check your credentials.');
     }

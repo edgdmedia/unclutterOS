@@ -41,6 +41,56 @@ export class BillingService {
     };
   }
 
+  async getBillingSummary(tenantId: bigint) {
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      include: { bankSubaccount: true },
+    });
+    if (!tenant) throw new NotFoundException('Practice tenant not found');
+
+    const subscription = await this.getSubscription(tenantId);
+    const bankSubaccount = tenant.bankSubaccount
+      ? {
+          bankCode: tenant.bankSubaccount.bankCode,
+          bankName: tenant.bankSubaccount.bankName,
+          accountNumber: tenant.bankSubaccount.accountNumber,
+          accountName: tenant.bankSubaccount.accountName,
+          isVerified: tenant.bankSubaccount.isVerified,
+        }
+      : null;
+
+    const history = [
+      {
+        date: tenant.updatedAt.toISOString(),
+        title: `${tenant.subscriptionTier} plan active`,
+        detail: `Current subscription is ${tenant.subscriptionTier}. Next charge ${subscription.nextChargeAmount} on ${subscription.nextBillingDate}.`,
+        type: 'subscription',
+      },
+      ...(tenant.bankSubaccount
+        ? [
+            {
+              date: tenant.bankSubaccount.updatedAt.toISOString(),
+              title: 'Payout account saved',
+              detail: `${tenant.bankSubaccount.bankName} ending ${tenant.bankSubaccount.accountNumber.slice(-4)} is ${tenant.bankSubaccount.isVerified ? 'verified' : 'pending verification'}.`,
+              type: 'payout',
+            },
+          ]
+        : []),
+      {
+        date: tenant.createdAt.toISOString(),
+        title: 'Practice billing profile created',
+        detail: 'Billing and subscription tracking started for this practice.',
+        type: 'system',
+      },
+    ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+    return {
+      subscription,
+      bankSubaccount,
+      history,
+    };
+  }
+
   async saveBankSubaccount(tenantId: bigint, dto: {
     bankCode: string;
     bankName: string;

@@ -30,7 +30,7 @@ export function InvitePage() {
 
   const handleClaimInvite = (e: React.FormEvent) => {
     e.preventDefault();
-    navigate('/dashboard');
+    navigate('/portal');
   };
 
   return (

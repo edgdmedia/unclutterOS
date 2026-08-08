@@ -5,11 +5,13 @@ import { useBrand } from '@unclutteros/ui';
 import { api } from '../utils/apiClient';
 
 type SubscriptionRecord = { subscriptionTier: 'STARTER' | 'PRO' | 'CLINIC'; nextBillingDate: string; nextChargeAmount: string };
+type BillingSummary = { subscription: SubscriptionRecord; history: Array<{ date: string; title: string; detail: string; type: string }> };
 
 export function SubscriptionSettingsPage() {
   const brand = useBrand();
   const primaryColor = brand.primaryColor || '#0F3A53';
   const [subscription, setSubscription] = useState<SubscriptionRecord | null>(null);
+  const [history, setHistory] = useState<BillingSummary['history']>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -19,8 +21,11 @@ export function SubscriptionSettingsPage() {
     async function loadSubscription() {
       setLoading(true);
       try {
-        const data = await api.get<SubscriptionRecord>('/v1/billing/subscription');
-        if (!cancelled) setSubscription(data);
+        const data = await api.get<BillingSummary>('/v1/billing/summary');
+        if (!cancelled) {
+          setSubscription(data.subscription);
+          setHistory(data.history);
+        }
       } catch (err) {
         if (!cancelled) setError(err instanceof Error ? err.message : 'Unable to load subscription');
       } finally {
@@ -37,8 +42,9 @@ export function SubscriptionSettingsPage() {
     setError(null);
     try {
       await api.post('/v1/billing/subscribe', { plan });
-      const refreshed = await api.get<SubscriptionRecord>('/v1/billing/subscription');
-      setSubscription(refreshed);
+      const refreshed = await api.get<BillingSummary>('/v1/billing/summary');
+      setSubscription(refreshed.subscription);
+      setHistory(refreshed.history);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to update subscription');
     } finally {
@@ -75,7 +81,16 @@ export function SubscriptionSettingsPage() {
                 </button>
               ))}
             </div>
-            <div className="rounded-[24px] border border-dashed border-[#CBD5E1] bg-white px-6 py-8 text-sm font-medium text-[#64748B] flex items-center gap-2"><TrendingUp className="h-4 w-4 text-[#0F3A53]" /> Invoice history is not wired yet, so this screen now focuses on the real subscription tier + upgrade flow.</div>
+            <div className="rounded-[24px] border border-[#E2E8F0] bg-white px-6 py-6 space-y-3">
+              <div className="flex items-center gap-2 text-sm font-bold text-[#0F172A]"><TrendingUp className="h-4 w-4 text-[#0F3A53]" /> Billing history</div>
+              {history.map((item) => (
+                <div key={`${item.type}_${item.date}`} className="rounded-[16px] bg-[#F8FAFC] border border-[#E2E8F0] px-4 py-3">
+                  <div className="text-[12px] font-bold text-[#0F172A]">{item.title}</div>
+                  <div className="text-[11px] text-[#94A3B8] font-medium">{new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(item.date))}</div>
+                  <div className="mt-1 text-[12px] text-[#475569] font-medium">{item.detail}</div>
+                </div>
+              ))}
+            </div>
           </>
         )}
       </main>

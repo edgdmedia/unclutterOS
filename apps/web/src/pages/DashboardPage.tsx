@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Copy, Check, Bell, Link2, Calendar, FileText, Video, Upload, Globe, Palette, Sparkles, TrendingUp, CheckCircle2 } from 'lucide-react';
 import { Button } from '@unclutteros/ui';
 import { api, TENANT_SLUG } from '../utils/apiClient';
@@ -15,6 +16,7 @@ interface DashboardPageProps {
 }
 
 export function DashboardPage(props: DashboardPageProps) {
+  const navigate = useNavigate();
   const [copied, setCopied] = useState(false);
   const [practiceActive, setPracticeActive] = useState(props.tenantStatus === 'ACTIVE');
   const primaryColor = props.primaryColor || '#0F3A53';
@@ -247,6 +249,7 @@ export function DashboardPage(props: DashboardPageProps) {
                     </button>
 
                     <button
+                      onClick={() => navigate(`/session/${s.id}/prep`)}
                       className="h-[34px] px-3 rounded-[11px] text-white text-xs font-bold flex items-center gap-1.5 transition-opacity cursor-pointer"
                       style={{ backgroundColor: primaryColor }}
                     >

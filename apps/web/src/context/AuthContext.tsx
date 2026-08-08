@@ -17,7 +17,7 @@ interface AuthContextValue {
   profile: AuthProfile | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<AuthProfile>;
   logout: () => Promise<void>;
 }
 
@@ -87,6 +87,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const res = await api.post<{ profile: AuthProfile }>('/v1/auth/login', { email, password });
     setProfile(res.profile);
     cacheProfile(res.profile);
+    return res.profile;
   }, []);
 
   const logout = useCallback(async () => {

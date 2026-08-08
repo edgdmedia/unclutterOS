@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Video, Calendar, Check, Search } from 'lucide-react';
 import { useBrand } from '@unclutteros/ui';
 import { api, TENANT_SLUG } from '../utils/apiClient';
+import { useAuth } from '../context/AuthContext';
 
 type PortalTab = 'upcoming' | 'past' | 'payments';
 
@@ -14,6 +15,7 @@ type PortalSession = {
   status: string;
   priceKobo: string;
   therapistName: string;
+  videoRoomLink: string | null;
 };
 
 type PortalPayload = {
@@ -55,11 +57,12 @@ function DateTile({ startsAt, size = 'md' }: { startsAt: string; size?: 'md' | '
 
 export function ClientPortalPage() {
   const brand = useBrand();
+  const { profile, isAuthenticated } = useAuth();
   const primary = brand.primaryColor || '#0F3A53';
 
   const [tab, setTab] = useState<PortalTab>('upcoming');
-  const [email, setEmail] = useState('adaeze@email.com');
-  const [lookupEmail, setLookupEmail] = useState('adaeze@email.com');
+  const [email, setEmail] = useState('');
+  const [lookupEmail, setLookupEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasReviewForm, setHasReviewForm] = useState(false);
@@ -84,8 +87,12 @@ export function ClientPortalPage() {
   }, []);
 
   useEffect(() => {
-    void loadPortal(lookupEmail);
-  }, []);
+    if (isAuthenticated && profile?.type === 'user' && profile.email) {
+      setEmail(profile.email);
+      setLookupEmail(profile.email);
+      void loadPortal(profile.email);
+    }
+  }, [isAuthenticated, profile?.type, profile?.email]);
 
   async function loadPortal(targetEmail: string) {
     setLoading(true);
@@ -142,6 +149,7 @@ export function ClientPortalPage() {
                 type="email"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
+                disabled={isAuthenticated && profile?.type === 'user'}
                 className="w-full h-[46px] px-3.5 rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-[14px] font-medium text-[#0F172A] outline-none focus:bg-white focus:border-[#94A3B8]"
               />
             </div>
@@ -151,6 +159,7 @@ export function ClientPortalPage() {
                 setLookupEmail(email);
                 void loadPortal(email);
               }}
+              disabled={isAuthenticated && profile?.type === 'user'}
               className="h-[46px] px-5 rounded-[14px] text-white text-[13px] font-bold flex items-center gap-2"
               style={{ backgroundColor: primary }}
             >
@@ -175,10 +184,17 @@ export function ClientPortalPage() {
                 <button className="h-[48px] px-5 rounded-[16px] bg-transparent border border-[rgba(255,255,255,0.22)] text-white text-[13.5px] font-bold hover:bg-white/10 cursor-pointer">
                   Reschedule
                 </button>
-                <button className="h-[48px] px-5 rounded-[16px] bg-[#E3B341] text-[#0F172A] text-[13.5px] font-extrabold flex items-center gap-2 shadow-[0_8px_22px_rgba(227,179,65,0.35)] hover:brightness-105 cursor-pointer">
-                  <Video className="h-4 w-4" />
-                  Join session
-                </button>
+                {nextSession.videoRoomLink ? (
+                  <a href={nextSession.videoRoomLink} target="_blank" rel="noreferrer" className="h-[48px] px-5 rounded-[16px] bg-[#E3B341] text-[#0F172A] text-[13.5px] font-extrabold flex items-center gap-2 shadow-[0_8px_22px_rgba(227,179,65,0.35)] hover:brightness-105 cursor-pointer">
+                    <Video className="h-4 w-4" />
+                    Join session
+                  </a>
+                ) : (
+                  <button className="h-[48px] px-5 rounded-[16px] bg-[#E2E8F0] text-[#64748B] text-[13.5px] font-extrabold flex items-center gap-2 cursor-not-allowed">
+                    <Video className="h-4 w-4" />
+                    No room link yet
+                  </button>
+                )}
               </div>
             </div>
           ) : (

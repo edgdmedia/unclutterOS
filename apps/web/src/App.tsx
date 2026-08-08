@@ -39,6 +39,7 @@ const ForgotPasswordPage = lazy(() => import('./pages/auth/ForgotPasswordPage').
 const ResetPasswordPage = lazy(() => import('./pages/auth/ResetPasswordPage').then((m) => ({ default: m.ResetPasswordPage })));
 const VerifyEmailPage = lazy(() => import('./pages/auth/VerifyEmailPage').then((m) => ({ default: m.VerifyEmailPage })));
 const InvitePage = lazy(() => import('./pages/auth/InvitePage').then((m) => ({ default: m.InvitePage })));
+const ClientAccountSetupPage = lazy(() => import('./pages/auth/ClientAccountSetupPage').then((m) => ({ default: m.ClientAccountSetupPage })));
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -339,7 +340,8 @@ function AppLayout() {
     location.pathname.startsWith('/onboarding') ||
     location.pathname.startsWith('/auth') ||
     location.pathname.startsWith('/invite') ||
-    location.pathname === '/portal' ||
+    location.pathname.startsWith('/client/') ||
+    location.pathname === '/dashboard' ||
     location.pathname === '/login' ||
     location.pathname === '/register' ||
     location.pathname === '/forgot-password' ||
@@ -353,7 +355,7 @@ function AppLayout() {
           <Routes>
             <Route path="/session/:id/prep" element={<SessionPrepPage />} />
             <Route path="/session/:id" element={<TelehealthVideoRoomPage />} />
-            <Route path="/portal" element={<ClientPortalPage />} />
+            <Route path="/dashboard" element={<ClientPortalPage />} />
             <Route path="/onboarding" element={<OnboardingWizardPage />} />
             <Route path="/booking/confirmed" element={<BookingConfirmedPage />} />
             <Route path="/booking/inactive" element={<InactivePracticePage />} />
@@ -373,6 +375,7 @@ function AppLayout() {
             <Route path="/verify-email" element={<VerifyEmailPage />} />
             <Route path="/auth/invite/claim" element={<InvitePage />} />
             <Route path="/invite/claim" element={<InvitePage />} />
+            <Route path="/client/create-account" element={<ClientAccountSetupPage />} />
           </Routes>
         </Suspense>
       </BrandProvider>
@@ -397,7 +400,7 @@ function AppLayout() {
           <Suspense fallback={<PageFallback />}>
             <Routes>
               <Route
-                path="/dashboard"
+                path="/portal"
                 element={
                   <DashboardPage
                     tenantStatus={tenantStatus}
@@ -438,7 +441,7 @@ function AppLayout() {
               <Route path="/settings/payouts" element={<PayoutSettingsPage />} />
               <Route path="/settings/forms" element={<FormsManagerPage />} />
               <Route path="/settings/forms/:id" element={<FormEditorPage />} />
-              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+              <Route path="/" element={<Navigate to="/portal" replace />} />
             </Routes>
           </Suspense>
         </div>

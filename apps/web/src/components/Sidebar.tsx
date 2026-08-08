@@ -30,7 +30,7 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { to: '/portal', label: 'Overview', icon: LayoutDashboard },
   { to: '/schedule', label: 'Schedule', icon: Calendar },
   { to: '/clients', label: 'Clients', icon: Users },
   { to: '/submissions', label: 'Submissions', icon: ClipboardCheck },

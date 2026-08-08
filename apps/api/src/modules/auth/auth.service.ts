@@ -29,10 +29,9 @@ export class AuthService {
     const existingProfile = await this.prisma.profile.findFirst({
       where: { tenantId, email },
     });
-    if (existingProfile) {
+    if (existingProfile?.userId) {
       throw new BadRequestException('An account with this email already exists in this practice');
     }
-
     const hashedPassword = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
 
     // Create or find underlying User
@@ -47,22 +46,35 @@ export class AuthService {
       });
     }
 
-    // Create Profile scoped to tenant
     const isTherapist = dto.type === 'therapist';
-    const profile = await this.prisma.profile.create({
-      data: {
-        tenantId,
-        userId: user.id,
-        email,
-        username,
-        firstName: dto.firstName,
-        lastName: dto.lastName,
-        type: dto.type || 'user',
-        status: 'active',
-        emailVerified: true,
-        emailVerifiedAt: new Date(),
-      },
-    });
+    const profile = existingProfile
+      ? await this.prisma.profile.update({
+          where: { id: existingProfile.id },
+          data: {
+            userId: existingProfile.userId || user.id,
+            username: existingProfile.username || username,
+            firstName: dto.firstName ?? existingProfile.firstName,
+            lastName: dto.lastName ?? existingProfile.lastName,
+            type: dto.type || existingProfile.type || 'user',
+            status: 'active',
+            emailVerified: true,
+            emailVerifiedAt: new Date(),
+          },
+        })
+      : await this.prisma.profile.create({
+          data: {
+            tenantId,
+            userId: user.id,
+            email,
+            username,
+            firstName: dto.firstName,
+            lastName: dto.lastName,
+            type: dto.type || 'user',
+            status: 'active',
+            emailVerified: true,
+            emailVerifiedAt: new Date(),
+          },
+        });
 
     // If therapist, create ConsultTherapistProfile
     if (isTherapist) {
