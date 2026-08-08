@@ -1,7 +1,8 @@
 import { Controller, Get, Post, Patch, Body, Param, Req, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiOperation } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { TenantService } from './tenant.service';
 import { TenantRequest } from '../../common/middleware/tenant.middleware';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
 @ApiTags('Tenant')
 @Controller('v1/tenant')
@@ -41,21 +42,27 @@ export class TenantController {
   }
 
   @Patch('brand')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Update practice brand configuration (Admin)' })
-  updateBrand(@Req() req: TenantRequest, @Body() dto: any) {
-    if (!req.tenantId) {
+  updateBrand(@Req() req: any, @Body() dto: any) {
+    const tenantId = req.user?.tenantId || req.tenantId;
+    if (!tenantId) {
       throw new Error('Tenant context required');
     }
-    return this.tenantService.updateTenantBrand(req.tenantId, dto);
+    return this.tenantService.updateTenantBrand(BigInt(tenantId), dto);
   }
 
   @Get('brand')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Get current practice profile + brand configuration' })
-  getBrand(@Req() req: TenantRequest) {
-    if (!req.tenantId) {
+  getBrand(@Req() req: any) {
+    const tenantId = req.user?.tenantId || req.tenantId;
+    if (!tenantId) {
       throw new Error('Tenant context required');
     }
-    return this.tenantService.getTenantBrand(req.tenantId);
+    return this.tenantService.getTenantBrand(BigInt(tenantId));
   }
 
   @Get('notifications')

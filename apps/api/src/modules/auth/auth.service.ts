@@ -22,8 +22,24 @@ export class AuthService {
     username?: string;
     practiceName?: string;
     type?: string; // "user", "therapist", "admin"
+    alsoTherapist?: boolean; // Practice owner who also provides services
   }) {
     const email = dto.email.toLowerCase().trim();
+
+    // Password policy: min 8 chars with upper, lower, digit and a special char.
+    if (!dto.password || dto.password.length < 8) {
+      throw new BadRequestException('Password must be at least 8 characters');
+    }
+    if (!/[A-Z]/.test(dto.password) || !/[a-z]/.test(dto.password)) {
+      throw new BadRequestException('Password must contain both uppercase and lowercase letters');
+    }
+    if (!/[0-9]/.test(dto.password)) {
+      throw new BadRequestException('Password must contain at least one number');
+    }
+    if (!/[^A-Za-z0-9]/.test(dto.password)) {
+      throw new BadRequestException('Password must contain at least one special character');
+    }
+
     const username = (dto.username || email.split('@')[0]).toLowerCase().trim();
 
     let targetTenantId = tenantId;
@@ -60,7 +76,8 @@ export class AuthService {
       });
     }
 
-    const isTherapist = dto.type === 'therapist';
+    const isTherapist = dto.type === 'therapist' || dto.alsoTherapist === true;
+    const isOwner = !tenantId;
     const profile = existingProfile
       ? await this.prisma.profile.update({
           where: { id: existingProfile.id },
@@ -84,6 +101,7 @@ export class AuthService {
             firstName: dto.firstName,
             lastName: dto.lastName,
             type: dto.type || 'user',
+            role: isOwner ? 'OWNER' : undefined,
             status: 'active',
             emailVerified: true,
             emailVerifiedAt: new Date(),

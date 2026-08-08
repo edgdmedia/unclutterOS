@@ -20,6 +20,15 @@ interface AuthContextValue {
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<AuthProfile>;
   loginAdmin: (email: string, password: string) => Promise<AuthProfile>;
+  register: (data: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    password: string;
+    practiceName: string;
+    persona: 'therapist' | 'practice';
+    alsoTherapist?: boolean;
+  }) => Promise<AuthProfile>;
   logout: () => Promise<void>;
 }
 
@@ -99,6 +108,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return res.profile;
   }, []);
 
+  // Registers a brand-new practice + owner therapist. The X-Tenant-Slug header
+  // is explicitly emptied so the API creates a fresh tenant instead of
+  // resolving into the current practice context.
+  const register = useCallback(
+    async (data: { firstName: string; lastName: string; email: string; password: string; practiceName: string; persona: 'therapist' | 'practice'; alsoTherapist?: boolean }) => {
+      const handle = data.practiceName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'practice';
+      const res = await api.post<{ profile: AuthProfile }>(
+        '/v1/auth/register',
+        {
+          firstName: data.firstName,
+          lastName: data.lastName,
+          email: data.email,
+          password: data.password,
+          practiceName: data.practiceName,
+          username: handle,
+          type: data.persona === 'practice' ? 'admin' : 'therapist',
+          alsoTherapist: data.alsoTherapist,
+        },
+        { 'X-Tenant-Slug': '' },
+      );
+      setProfile(res.profile);
+      cacheProfile(res.profile);
+      return res.profile;
+    },
+    [],
+  );
+
   const logout = useCallback(async () => {
     setProfile(null);
     cacheProfile(null);
@@ -114,6 +150,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isAuthenticated: !!profile,
         login,
         loginAdmin,
+        register,
         logout,
       }}
     >

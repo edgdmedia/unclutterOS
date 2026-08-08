@@ -14,6 +14,10 @@
 
 const API_BASE = import.meta.env.VITE_API_URL || 'https://api.os.unclutter.com.ng';
 export const TENANT_SLUG = import.meta.env.VITE_TENANT_SLUG || 'dr-smith';
+export const APP_BASE_URL = import.meta.env.VITE_APP_URL || 'https://os.unclutter.com.ng';
+export function getBookingUrl(slug: string): string {
+  return `${APP_BASE_URL}/booking/${slug}`;
+}
 
 const CSRF_COOKIE = 'unclutter_csrf';
 
@@ -147,7 +151,9 @@ export async function apiRequest<T = unknown>(
 // ── Shorthand helpers ─────────────────────────────────────────────────────────
 export const api = {
   get: <T>(path: string) => apiRequest<T>(path, { method: 'GET' }),
-  post: <T>(path: string, body: unknown) => apiRequest<T>(path, { method: 'POST', body }),
-  patch: <T>(path: string, body: unknown) => apiRequest<T>(path, { method: 'PATCH', body }),
+  post: <T>(path: string, body: unknown, headers?: Record<string, string>) =>
+    apiRequest<T>(path, { method: 'POST', body, headers }),
+  patch: <T>(path: string, body: unknown, headers?: Record<string, string>) =>
+    apiRequest<T>(path, { method: 'PATCH', body, headers }),
   delete: <T>(path: string) => apiRequest<T>(path, { method: 'DELETE' }),
 };

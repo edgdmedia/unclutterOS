@@ -9,9 +9,8 @@ export function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { login, isLoading } = useAuth();
-  // Pre-filled with seeded dev credentials for easy local testing
-  const [email, setEmail] = useState((location.state as { email?: string } | null)?.email || 'dr.jane@smiththerapy.ng');
-  const [password, setPassword] = useState('password123');
+  const [email, setEmail] = useState((location.state as { email?: string } | null)?.email || '');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [remember, setRemember] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -50,6 +49,7 @@ export function LoginPage() {
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@yourpractice.com"
             className={authInputCls}
           />
         </AuthField>
@@ -60,7 +60,7 @@ export function LoginPage() {
             icon={<Lock className="h-[17px] w-[17px] text-[#94A3B8] flex-none" strokeWidth={2} />}
             labelRow={
               <Link
-                to="/auth/forgot-password"
+                to="/forgot-password"
                 className="ml-auto text-xs font-semibold text-[#64748B] hover:text-[#0F3A53]"
               >
                 Forgot password?
@@ -86,6 +86,7 @@ export function LoginPage() {
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              placeholder="Your password"
               className={authInputCls}
             />
           </AuthField>
@@ -137,7 +138,7 @@ export function LoginPage() {
 
       <div className="mt-6 text-[13.5px] text-[#64748B] text-center">
         Don't have a practice account yet?{' '}
-        <Link to="/auth/signup" className="font-bold text-[#0F3A53] hover:underline">
+        <Link to="/signup" className="font-bold text-[#0F3A53] hover:underline">
           Create a practice
         </Link>
       </div>

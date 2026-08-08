@@ -1,4 +1,5 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
 
 @Injectable()
@@ -75,6 +76,7 @@ export class TenantService {
 
   async updateTenantBrand(tenantId: bigint, dto: {
     name?: string;
+    slug?: string;
     shortName?: string;
     logoUrl?: string;
     faviconUrl?: string;
@@ -90,26 +92,36 @@ export class TenantService {
     address?: string;
     category?: string;
   }) {
-    return this.prisma.tenant.update({
-      where: { id: tenantId },
-      data: {
-        ...(dto.name ? { name: dto.name.trim() } : {}),
-        ...(dto.shortName !== undefined ? { shortName: dto.shortName?.trim() || null } : {}),
-        ...(dto.logoUrl !== undefined ? { logoUrl: dto.logoUrl } : {}),
-        ...(dto.faviconUrl !== undefined ? { faviconUrl: dto.faviconUrl } : {}),
-        ...(dto.primaryColor ? { primaryColor: dto.primaryColor } : {}),
-        ...(dto.secondaryColor ? { secondaryColor: dto.secondaryColor } : {}),
-        ...(dto.customDomain !== undefined ? { customDomain: dto.customDomain?.toLowerCase().trim() || null } : {}),
-        ...(dto.cancellationHours !== undefined ? { cancellationHours: dto.cancellationHours } : {}),
-        ...(dto.welcomeTitle !== undefined ? { welcomeTitle: dto.welcomeTitle } : {}),
-        ...(dto.welcomeMessage !== undefined ? { welcomeMessage: dto.welcomeMessage } : {}),
-        ...(dto.publicEmail !== undefined ? { publicEmail: dto.publicEmail?.trim() || null } : {}),
-        ...(dto.publicPhone !== undefined ? { publicPhone: dto.publicPhone?.trim() || null } : {}),
-        ...(dto.city !== undefined ? { city: dto.city?.trim() || null } : {}),
-        ...(dto.address !== undefined ? { address: dto.address?.trim() || null } : {}),
-        ...(dto.category !== undefined ? { category: dto.category?.trim() || null } : {}),
-      },
-    });
+    const data: Prisma.TenantUpdateInput = {
+      ...(dto.name ? { name: dto.name.trim() } : {}),
+      ...(dto.slug ? { slug: dto.slug.toLowerCase().trim() } : {}),
+      ...(dto.shortName !== undefined ? { shortName: dto.shortName?.trim() || null } : {}),
+      ...(dto.logoUrl !== undefined ? { logoUrl: dto.logoUrl } : {}),
+      ...(dto.faviconUrl !== undefined ? { faviconUrl: dto.faviconUrl } : {}),
+      ...(dto.primaryColor ? { primaryColor: dto.primaryColor } : {}),
+      ...(dto.secondaryColor ? { secondaryColor: dto.secondaryColor } : {}),
+      ...(dto.customDomain !== undefined ? { customDomain: dto.customDomain?.toLowerCase().trim() || null } : {}),
+      ...(dto.cancellationHours !== undefined ? { cancellationHours: dto.cancellationHours } : {}),
+      ...(dto.welcomeTitle !== undefined ? { welcomeTitle: dto.welcomeTitle } : {}),
+      ...(dto.welcomeMessage !== undefined ? { welcomeMessage: dto.welcomeMessage } : {}),
+      ...(dto.publicEmail !== undefined ? { publicEmail: dto.publicEmail?.trim() || null } : {}),
+      ...(dto.publicPhone !== undefined ? { publicPhone: dto.publicPhone?.trim() || null } : {}),
+      ...(dto.city !== undefined ? { city: dto.city?.trim() || null } : {}),
+      ...(dto.address !== undefined ? { address: dto.address?.trim() || null } : {}),
+      ...(dto.category !== undefined ? { category: dto.category?.trim() || null } : {}),
+    };
+
+    try {
+      return await this.prisma.tenant.update({
+        where: { id: tenantId },
+        data,
+      });
+    } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+        throw new ConflictException('That booking handle is already taken. Try another one.');
+      }
+      throw err;
+    }
   }
 
   async getTenantBrand(tenantId: bigint) {

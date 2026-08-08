@@ -7,8 +7,17 @@ const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 export class CsrfGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
     const req = context.switchToHttp().getRequest();
+    const path = req.path || req.url || '';
 
-    if (SAFE_METHODS.has(req.method)) return true;
+    // Safe HTTP methods and auth entry points are exempt from CSRF validation
+    if (
+      SAFE_METHODS.has(req.method) ||
+      path.includes('/auth/login') ||
+      path.includes('/auth/register') ||
+      path.includes('/auth/refresh')
+    ) {
+      return true;
+    }
 
     const hasSession = req.cookies?.[ACCESS_COOKIE] || req.cookies?.[REFRESH_COOKIE];
     if (!hasSession) return true;

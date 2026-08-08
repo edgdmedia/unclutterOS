@@ -1,20 +1,79 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowRight, Building, Lock, Mail, User } from 'lucide-react';
+import { ArrowRight, Building, Check, Lock, Mail, Sparkles, User, Users, X } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 import { AuthSplitShell } from '../../components/AuthSplitShell';
 import { AuthField, authInputCls } from '../../components/AuthField';
 
+const PASSWORD_RULES = [
+  { label: 'At least 8 characters', test: (p: string) => p.length >= 8 },
+  { label: 'One uppercase letter (A–Z)', test: (p: string) => /[A-Z]/.test(p) },
+  { label: 'One lowercase letter (a–z)', test: (p: string) => /[a-z]/.test(p) },
+  { label: 'One number (0–9)', test: (p: string) => /[0-9]/.test(p) },
+  { label: 'One special character (!@#$%…)', test: (p: string) => /[^A-Za-z0-9]/.test(p) },
+];
+
 export function SignupPage() {
   const navigate = useNavigate();
-  const [practiceName, setPracticeName] = useState('Dr. Jane Smith Therapy');
-  const [fullName, setFullName] = useState('Dr. Jane Smith');
-  const [email, setEmail] = useState('dr.jane@smiththerapy.ng');
+  const { register, isLoading } = useAuth();
+  const [persona, setPersona] = useState<'therapist' | 'practice'>('therapist');
+  const [alsoTherapist, setAlsoTherapist] = useState(false);
+  const [practiceName, setPracticeName] = useState('');
+  const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSignup = (e: React.FormEvent) => {
+  const passwordChecks = useMemo(() => PASSWORD_RULES.map((rule) => ({ ...rule, ok: rule.test(password) })), [password]);
+  const passwordValid = passwordChecks.every((c) => c.ok);
+
+  const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    navigate('/onboarding');
+    setError(null);
+    if (!passwordValid) {
+      setError('Your password does not meet all the requirements below.');
+      return;
+    }
+    try {
+      const nameParts = fullName.trim().split(/\s+/);
+      await register({
+        firstName: nameParts[0] || fullName.trim(),
+        lastName: nameParts.slice(1).join(' '),
+        email,
+        password,
+        practiceName: practiceName.trim(),
+        persona,
+        alsoTherapist: persona === 'practice' ? alsoTherapist : undefined,
+      });
+      navigate('/onboarding', {
+        state: {
+          practiceName: practiceName.trim(),
+          fullName: fullName.trim(),
+          email,
+          persona,
+          alsoTherapist: persona === 'practice' ? alsoTherapist : false,
+        },
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to create your practice. Please try again.');
+    }
   };
+
+  const personaOptions: Array<{ value: 'therapist' | 'practice'; label: string; icon: React.ReactNode; desc: string }> = [
+    {
+      value: 'therapist',
+      label: 'Solo therapist',
+      icon: <Sparkles className="h-[17px] w-[17px]" strokeWidth={2} />,
+      desc: 'Own white-label booking, calendar & notes',
+    },
+    {
+      value: 'practice',
+      label: 'Practice / clinic',
+      icon: <Users className="h-[17px] w-[17px]" strokeWidth={2} />,
+      desc: 'Team roster, shared billing & policies',
+    },
+  ];
 
   return (
     <AuthSplitShell
@@ -29,11 +88,52 @@ export function SignupPage() {
       ]}
     >
       <div className="text-[29px] font-bold tracking-[-0.03em] text-[#0F172A]">
-        Create your practice
+        Create your workspace
       </div>
       <p className="mt-[7px] text-[14.5px] text-[#64748B] leading-[1.6]">
-        Setup your practice portal in under 2 minutes.
+        Setup your portal in under 2 minutes.
       </p>
+
+      <div className="mt-[22px] grid grid-cols-2 gap-3">
+        {personaOptions.map((opt) => (
+          <button
+            key={opt.value}
+            type="button"
+            onClick={() => setPersona(opt.value)}
+            aria-pressed={persona === opt.value}
+            className={`rounded-[16px] border p-3.5 text-left transition-colors cursor-pointer ${
+              persona === opt.value
+                ? 'border-[#0F3A53] bg-[#EFF6FB]'
+                : 'border-[#E2E8F0] bg-[#F8FAFC] hover:border-[#CBD5E1]'
+            }`}
+          >
+            <div className={`flex items-center gap-2 ${persona === opt.value ? 'text-[#0F3A53]' : 'text-[#64748B]'}`}>
+              {opt.icon}
+              <span className="text-[13px] font-bold">{opt.label}</span>
+            </div>
+            <p className="mt-1 text-[11px] text-[#94A3B8] leading-snug">{opt.desc}</p>
+          </button>
+        ))}
+      </div>
+
+      {persona === 'practice' && (
+        <button
+          type="button"
+          onClick={() => setAlsoTherapist((v) => !v)}
+          className="mt-3 flex items-center gap-2.5 cursor-pointer group"
+        >
+          <span
+            className={`h-5 w-5 rounded-[7px] border flex items-center justify-center transition-colors ${
+              alsoTherapist ? 'bg-[#0F3A53] border-[#0F3A53]' : 'bg-white border-[#CBD5E1]'
+            }`}
+          >
+            {alsoTherapist && <Check className="h-3 w-3 text-white" strokeWidth={3.5} />}
+          </span>
+          <span className="text-[12.5px] text-[#475569] font-medium group-hover:text-[#0F172A]">
+            I'll also provide services myself
+          </span>
+        </button>
+      )}
 
       <form onSubmit={handleSignup} className="mt-[26px] flex flex-col gap-4">
         <AuthField
@@ -45,7 +145,7 @@ export function SignupPage() {
             required
             value={practiceName}
             onChange={(e) => setPracticeName(e.target.value)}
-            placeholder="Dr. Jane Smith Therapy"
+            placeholder="e.g. Smith Therapy"
             className={authInputCls}
           />
         </AuthField>
@@ -59,7 +159,7 @@ export function SignupPage() {
             required
             value={fullName}
             onChange={(e) => setFullName(e.target.value)}
-            placeholder="Dr. Jane Smith"
+            placeholder="e.g. Dr. Jane Smith"
             className={authInputCls}
           />
         </AuthField>
@@ -73,7 +173,7 @@ export function SignupPage() {
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="jane@smiththerapy.ng"
+            placeholder="jane@smiththerapy.com"
             className={authInputCls}
           />
         </AuthField>
@@ -81,22 +181,57 @@ export function SignupPage() {
         <AuthField
           label="Password"
           icon={<Lock className="h-[17px] w-[17px] text-[#94A3B8] flex-none" strokeWidth={2} />}
+          trailing={
+            <button
+              type="button"
+              onClick={() => setShowPassword((v) => !v)}
+              className="flex-none text-[#94A3B8] hover:text-[#475569] cursor-pointer"
+              aria-label="Toggle password visibility"
+            >
+              {showPassword ? 'Hide' : 'Show'}
+            </button>
+          }
         >
           <input
-            type="password"
+            type={showPassword ? 'text' : 'password'}
             required
+            minLength={8}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="At least 8 characters"
+            placeholder="Create a strong password"
             className={authInputCls}
           />
         </AuthField>
 
+        {password.length > 0 && (
+          <div className="rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] px-4 py-3 grid grid-cols-1 gap-1.5">
+            {passwordChecks.map((rule) => (
+              <div key={rule.label} className="flex items-center gap-2 text-xs">
+                {rule.ok ? (
+                  <Check className="h-3.5 w-3.5 text-emerald-600 flex-none" strokeWidth={3} />
+                ) : (
+                  <X className="h-3.5 w-3.5 text-[#94A3B8] flex-none" strokeWidth={3} />
+                )}
+                <span className={`font-medium ${rule.ok ? 'text-emerald-700' : 'text-[#64748B]'}`}>
+                  {rule.label}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {error && (
+          <p className="text-xs font-medium text-red-600 bg-red-50 rounded-[12px] px-3.5 py-2.5">
+            {error}
+          </p>
+        )}
+
         <button
           type="submit"
-          className="w-full h-[54px] rounded-[14px] bg-[#0F3A53] text-white text-[15px] font-bold inline-flex items-center justify-center gap-[10px] cursor-pointer shadow-[0_10px_26px_rgba(15,58,83,0.26)] transition-[filter] hover:brightness-110"
+          disabled={isLoading}
+          className="w-full h-[54px] rounded-[14px] bg-[#0F3A53] text-white text-[15px] font-bold inline-flex items-center justify-center gap-[10px] cursor-pointer shadow-[0_10px_26px_rgba(15,58,83,0.26)] transition-[filter] hover:brightness-110 disabled:opacity-70 disabled:cursor-not-allowed"
         >
-          <span>Create practice workspace</span>
+          <span>{isLoading ? 'Creating your practice…' : 'Create practice workspace'}</span>
           <ArrowRight className="h-[17px] w-[17px]" strokeWidth={2.4} />
         </button>
       </form>
@@ -107,7 +242,7 @@ export function SignupPage() {
 
       <div className="mt-[18px] text-[13.5px] text-[#64748B] text-center">
         Already have an account?{' '}
-        <Link to="/auth/login" className="font-bold text-[#0F3A53] hover:underline">
+        <Link to="/login" className="font-bold text-[#0F3A53] hover:underline">
           Log in
         </Link>
       </div>

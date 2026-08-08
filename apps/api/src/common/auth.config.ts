@@ -37,7 +37,7 @@ export function cookieOptions(maxAgeMs: number, path = '/'): CookieOptions {
   return {
     httpOnly: true,
     secure: IS_PROD,
-    sameSite: 'lax',
+    sameSite: IS_PROD ? 'none' : 'lax',
     path,
     maxAge: maxAgeMs,
   };
