@@ -33,7 +33,7 @@ export class AuthService {
         data: {
           name: dto.practiceName || `${dto.firstName || 'Practice'} Therapy`,
           slug: `${cleanSlug || 'practice'}-${Date.now().toString().slice(-4)}`,
-          status: 'active',
+          isActive: true,
         },
       });
       targetTenantId = newTenant.id;
