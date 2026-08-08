@@ -277,12 +277,12 @@ function AppLayout() {
 
   // API-backed state with graceful fallback to mock data on error.
   // Keys are null until a tenant session is active: anonymous visitors on the
-  // login screen, and platform admins (no tenantId) don't fetch workspace data.
+  // login screen, and platform admins (no tenant workspace) don't fetch.
   const location = useLocation();
   const isAdminRoute =
     location.pathname === '/admin' || location.pathname.startsWith('/admin/');
 
-  const hasTenantSession = !!profile?.tenantId;
+  const hasTenantSession = isAuthenticated && profile?.type !== 'platform_admin';
   const clientsKey = hasTenantSession && !isAdminRoute ? '/v1/tenant/clients' : null;
   const bookingsKey = hasTenantSession && !isAdminRoute ? '/v1/consult/therapist/bookings' : null;
   const staffKey = hasTenantSession && !isAdminRoute ? '/v1/tenant/staff' : null;
