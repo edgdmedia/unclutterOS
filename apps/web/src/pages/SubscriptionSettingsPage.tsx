@@ -1,0 +1,84 @@
+import React, { useEffect, useState } from 'react';
+import { Check, TrendingUp } from 'lucide-react';
+import { Eyebrow } from '@unclutteros/ui';
+import { useBrand } from '@unclutteros/ui';
+import { api } from '../utils/apiClient';
+
+type SubscriptionRecord = { subscriptionTier: 'STARTER' | 'PRO' | 'CLINIC'; nextBillingDate: string; nextChargeAmount: string };
+
+export function SubscriptionSettingsPage() {
+  const brand = useBrand();
+  const primaryColor = brand.primaryColor || '#0F3A53';
+  const [subscription, setSubscription] = useState<SubscriptionRecord | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadSubscription() {
+      setLoading(true);
+      try {
+        const data = await api.get<SubscriptionRecord>('/v1/billing/subscription');
+        if (!cancelled) setSubscription(data);
+      } catch (err) {
+        if (!cancelled) setError(err instanceof Error ? err.message : 'Unable to load subscription');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+    void loadSubscription();
+    return () => { cancelled = true; };
+  }, []);
+
+  async function handleSelectPlan(plan: SubscriptionRecord['subscriptionTier']) {
+    if (!subscription || plan === subscription.subscriptionTier) return;
+    setSaving(true);
+    setError(null);
+    try {
+      await api.post('/v1/billing/subscribe', { plan });
+      const refreshed = await api.get<SubscriptionRecord>('/v1/billing/subscription');
+      setSubscription(refreshed);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to update subscription');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="flex-1 min-w-[1192px] flex flex-col bg-[#F8FAFC]">
+      <header className="h-[88px] bg-white border-b border-[#E2E8F0] px-[26px] flex items-center justify-between gap-5 shrink-0">
+        <div>
+          <Eyebrow>SETTINGS</Eyebrow>
+          <h1 className="text-[20px] font-bold tracking-[-0.02em] text-[#0F172A]">Subscription</h1>
+          <p className="text-xs text-[#64748B] font-medium">{subscription ? `Next charge ${subscription.nextChargeAmount} on ${subscription.nextBillingDate}` : 'Loading subscription...'}</p>
+        </div>
+      </header>
+
+      <main className="p-[24px_26px_30px] space-y-6 flex-1">
+        {error ? <div className="rounded-[18px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">{error}</div> : null}
+        {loading || !subscription ? <div className="rounded-[24px] border border-[#E2E8F0] bg-white px-6 py-10 text-sm font-medium text-[#64748B]">Loading subscription...</div> : (
+          <>
+            <div className="grid grid-cols-3 gap-5">
+              {[
+                { key: 'STARTER' as const, name: 'Starter', price: '₦0/month', tone: 'light', features: ['1 Practitioner profile', 'Up to 20 bookings / mo', 'Instant Jitsi WebRTC video'] },
+                { key: 'PRO' as const, name: 'Pro Solo', price: '₦25,000/month', tone: 'dark', features: ['Unlimited sessions & bookings', '1 Receptionist / Staff login', 'Custom Domain (CNAME)', 'Daily.co BYOK Cloud Recording'] },
+                { key: 'CLINIC' as const, name: 'Group Clinic', price: '₦75,000/month', tone: 'light', features: ['Up to 25 Therapist profiles', 'Group Clinic RBAC Roles', 'Supervisor case reviews'] },
+              ].map((plan) => (
+                <button key={plan.key} onClick={() => void handleSelectPlan(plan.key)} disabled={saving} className={`p-6 rounded-[24px] cursor-pointer transition-all relative flex flex-col justify-between space-y-4 text-left ${plan.tone === 'dark' ? 'bg-[#0F172A] text-white' : 'bg-white'} ${subscription.subscriptionTier === plan.key ? `border-2 ${plan.tone === 'dark' ? 'border-[#E3B341]' : 'border-[#0F3A53]'}` : 'border border-[#E2E8F0]'} disabled:opacity-60`}>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between"><h3 className="text-[18px] font-extrabold">{plan.name}</h3>{subscription.subscriptionTier === plan.key ? <span className="text-[10px] font-black uppercase tracking-wider">Current</span> : null}</div>
+                    <div className="text-[28px] font-extrabold">{plan.price}</div>
+                    <ul className={`space-y-2 text-xs font-medium pt-2 border-t ${plan.tone === 'dark' ? 'text-slate-300 border-slate-800' : 'text-[#475569] border-[#F1F5F9]'}`}>{plan.features.map((feature) => <li key={feature} className="flex items-center gap-2"><Check className={`h-3.5 w-3.5 ${plan.tone === 'dark' ? 'text-[#E3B341]' : 'text-emerald-600'}`} /> {feature}</li>)}</ul>
+                  </div>
+                </button>
+              ))}
+            </div>
+            <div className="rounded-[24px] border border-dashed border-[#CBD5E1] bg-white px-6 py-8 text-sm font-medium text-[#64748B] flex items-center gap-2"><TrendingUp className="h-4 w-4 text-[#0F3A53]" /> Invoice history is not wired yet, so this screen now focuses on the real subscription tier + upgrade flow.</div>
+          </>
+        )}
+      </main>
+    </div>
+  );
+}

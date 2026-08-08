@@ -23,6 +23,24 @@ export class BillingService {
     };
   }
 
+  async getSubscription(tenantId: bigint) {
+    const tenant = await this.prisma.tenant.findUnique({ where: { id: tenantId } });
+    if (!tenant) throw new NotFoundException('Practice tenant not found');
+
+    const tier = (tenant.subscriptionTier || 'STARTER').toUpperCase();
+    const amounts: Record<string, string> = {
+      STARTER: '₦0',
+      PRO: '₦25,000',
+      CLINIC: '₦75,000',
+    };
+
+    return {
+      subscriptionTier: tier,
+      nextChargeAmount: amounts[tier] || '₦0',
+      nextBillingDate: '01 Sep 2026',
+    };
+  }
+
   async saveBankSubaccount(tenantId: bigint, dto: {
     bankCode: string;
     bankName: string;

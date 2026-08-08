@@ -19,6 +19,16 @@ export class BillingController {
     );
   }
 
+  @Get('subscription')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Get current subscription tier summary' })
+  getSubscription(@Req() req: any) {
+    return this.billingService.getSubscription(
+      BigInt(req.user.tenantId || req.tenantId),
+    );
+  }
+
   @Post('bank-subaccount')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('access-token')

@@ -56,7 +56,8 @@ const PRACTICE_GROUPS: { label: string; items: NavItem[] }[] = [
     items: [
       { to: '/settings/availability', label: 'Availability', icon: CalendarClock },
       { to: '/settings/team', label: 'Team & staff', icon: Users },
-      { to: '/settings/billing', label: 'Subscription & payouts', icon: CreditCard },
+      { to: '/settings/subscription', label: 'Subscription', icon: CreditCard },
+      { to: '/settings/payouts', label: 'Payouts', icon: CreditCard },
       { to: '/settings/forms', label: 'Forms & assessments', icon: FileText },
     ],
   },

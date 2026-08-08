@@ -15,7 +15,8 @@ const ClientDetailPage = lazy(() => import('./pages/ClientDetailPage').then((m) 
 const AnalyticsPage = lazy(() => import('./pages/AnalyticsPage').then((m) => ({ default: m.AnalyticsPage })));
 const BrandSettingsPage = lazy(() => import('./pages/BrandSettingsPage').then((m) => ({ default: m.BrandSettingsPage })));
 const TeamSettingsPage = lazy(() => import('./pages/TeamSettingsPage').then((m) => ({ default: m.TeamSettingsPage })));
-const BillingSettingsPage = lazy(() => import('./pages/BillingSettingsPage').then((m) => ({ default: m.BillingSettingsPage })));
+const SubscriptionSettingsPage = lazy(() => import('./pages/SubscriptionSettingsPage').then((m) => ({ default: m.SubscriptionSettingsPage })));
+const PayoutSettingsPage = lazy(() => import('./pages/PayoutSettingsPage').then((m) => ({ default: m.PayoutSettingsPage })));
 const FormsManagerPage = lazy(() => import('./pages/FormsManagerPage').then((m) => ({ default: m.FormsManagerPage })));
 const FormEditorPage = lazy(() => import('./pages/FormEditorPage').then((m) => ({ default: m.FormEditorPage })));
 const TelehealthVideoRoomPage = lazy(() => import('./pages/TelehealthVideoRoomPage').then((m) => ({ default: m.TelehealthVideoRoomPage })));
@@ -433,7 +434,8 @@ function AppLayout() {
                 }
               />
               <Route path="/settings/team" element={<TeamSettingsPage staff={resolvedStaff} setStaff={setStaff} onRefresh={refreshStaff} />} />
-              <Route path="/settings/billing" element={<BillingSettingsPage billingInfo={billingInfo} setBillingInfo={setBillingInfo} />} />
+              <Route path="/settings/subscription" element={<SubscriptionSettingsPage />} />
+              <Route path="/settings/payouts" element={<PayoutSettingsPage />} />
               <Route path="/settings/forms" element={<FormsManagerPage />} />
               <Route path="/settings/forms/:id" element={<FormEditorPage />} />
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
