@@ -27,7 +27,6 @@ export class AuthController {
     @Body() dto: any,
     @Res({ passthrough: true }) res: Response,
   ) {
-    if (!req.tenantId) throw new Error('Practice tenant context required');
     const result = await this.authService.register(req.tenantId, dto);
     this.setSessionCookies(res, result.accessToken, result.refreshToken);
     return { profile: result.profile };
@@ -40,7 +39,6 @@ export class AuthController {
     @Body() dto: any,
     @Res({ passthrough: true }) res: Response,
   ) {
-    if (!req.tenantId) throw new Error('Practice tenant context required');
     const result = await this.authService.login(req.tenantId, dto);
     this.setSessionCookies(res, result.accessToken, result.refreshToken);
     return { profile: result.profile };

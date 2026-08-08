@@ -14,20 +14,34 @@ export class AuthService {
     private readonly jwtService: JwtService,
   ) {}
 
-  async register(tenantId: bigint, dto: {
+  async register(tenantId: bigint | undefined, dto: {
     email: string;
     password: string;
     firstName?: string;
     lastName?: string;
     username?: string;
+    practiceName?: string;
     type?: string; // "user", "therapist", "admin"
   }) {
     const email = dto.email.toLowerCase().trim();
     const username = (dto.username || email.split('@')[0]).toLowerCase().trim();
 
+    let targetTenantId = tenantId;
+    if (!targetTenantId) {
+      const cleanSlug = (dto.username || dto.firstName || 'practice').toLowerCase().replace(/[^a-z0-9]/g, '');
+      const newTenant = await this.prisma.tenant.create({
+        data: {
+          name: dto.practiceName || `${dto.firstName || 'Practice'} Therapy`,
+          slug: `${cleanSlug || 'practice'}-${Date.now().toString().slice(-4)}`,
+          status: 'active',
+        },
+      });
+      targetTenantId = newTenant.id;
+    }
+
     // Check if user profile already exists for this tenant
     const existingProfile = await this.prisma.profile.findFirst({
-      where: { tenantId, email },
+      where: { tenantId: targetTenantId, email },
     });
     if (existingProfile?.userId) {
       throw new BadRequestException('An account with this email already exists in this practice');
@@ -63,7 +77,7 @@ export class AuthService {
         })
       : await this.prisma.profile.create({
           data: {
-            tenantId,
+            tenantId: targetTenantId,
             userId: user.id,
             email,
             username,
@@ -80,7 +94,7 @@ export class AuthService {
     if (isTherapist) {
       await this.prisma.consultTherapistProfile.create({
         data: {
-          tenantId,
+          tenantId: targetTenantId,
           profileId: profile.id,
           publicUsername: username,
           bookingEmail: email,
@@ -95,7 +109,7 @@ export class AuthService {
     const { accessToken, refreshToken } = this.generateTokens(
       user.id,
       profile.id,
-      tenantId,
+      targetTenantId,
       profile.type,
     );
 
@@ -136,11 +150,14 @@ export class AuthService {
     };
   }
 
-  async login(tenantId: bigint, dto: { email: string; password: string }) {    const email = dto.email.toLowerCase().trim();
+  async login(tenantId: bigint | undefined, dto: { email: string; password: string }) {
+    const email = dto.email.toLowerCase().trim();
 
+    const whereClause = tenantId ? { tenantId, email } : { email };
     const profile = await this.prisma.profile.findFirst({
-      where: { tenantId, email },
+      where: whereClause,
       include: { user: true },
+      orderBy: { createdAt: 'desc' },
     });
 
     if (!profile || !profile.user) {
