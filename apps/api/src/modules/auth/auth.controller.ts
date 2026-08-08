@@ -70,6 +70,9 @@ export class AuthController {
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Get current session profile status' })
   getStatus(@Req() req: any) {
+    if (req.user.type === 'platform_admin') {
+      return this.authService.getPlatformAdminStatus(BigInt(req.user.userId));
+    }
     return this.authService.getSessionStatus(BigInt(req.user.profileId || req.user.userId));
   }
 

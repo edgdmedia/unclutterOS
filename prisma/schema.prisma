@@ -67,6 +67,7 @@ model User {
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
 
+  platformRole        String?   // "SUPER_ADMIN", "ADMIN" — platform-level staff, no tenant context
   profiles            Profile[]
 }
 

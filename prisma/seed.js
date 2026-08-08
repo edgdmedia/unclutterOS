@@ -63,6 +63,15 @@ async function main() {
       password: hashedPassword,
     }
   });
+  const userPlatformAdmin = await prisma.user.create({
+    data: {
+      id: 3,
+      email: 'admin@unclutteros.com',
+      username: 'platformadmin',
+      password: hashedPassword,
+      platformRole: 'SUPER_ADMIN',
+    }
+  });
   console.log('👥 Created Users');
 
   // 5. Create Profiles

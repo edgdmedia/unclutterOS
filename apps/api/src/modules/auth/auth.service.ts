@@ -158,6 +158,12 @@ export class AuthService {
     };
   }
 
+  async getPlatformAdminStatus(userId: bigint) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user || !user.platformRole) throw new NotFoundException('Session profile not found');
+    return this.platformAdminProfile(user);
+  }
+
   async getSessionStatus(profileId: bigint) {
     const profile = await this.prisma.profile.findUnique({
       where: { id: profileId },
@@ -188,6 +194,22 @@ export class AuthService {
       });
     } catch {
       throw new UnauthorizedException('Invalid or expired refresh token');
+    }
+
+    if (payload.type === 'platform_admin') {
+      const user = await this.prisma.user.findUnique({ where: { id: BigInt(payload.sub) } });
+      if (!user || !user.platformRole) {
+        throw new UnauthorizedException('Session is no longer valid');
+      }
+      const { accessToken, refreshToken: nextRefreshToken } = this.generatePlatformAdminTokens(
+        user,
+        user.platformRole,
+      );
+      return {
+        accessToken,
+        refreshToken: nextRefreshToken,
+        profile: this.platformAdminProfile(user),
+      };
     }
 
     if (!payload.profileId) {
@@ -241,5 +263,41 @@ export class AuthService {
     });
 
     return { accessToken, refreshToken };
+  }
+
+  private generatePlatformAdminTokens(
+    user: { id: bigint; email: string },
+    platformRole: string,
+  ) {
+    const payload: JwtPayload = {
+      sub: user.id.toString(),
+      email: user.email,
+      type: 'platform_admin',
+      roles: [platformRole],
+    };
+
+    const accessToken = this.jwtService.sign(payload, { expiresIn: JWT_EXPIRES_IN });
+    const refreshToken = this.jwtService.sign(payload, {
+      secret: REFRESH_SECRET,
+      expiresIn: REFRESH_EXPIRES_IN,
+    });
+
+    return { accessToken, refreshToken };
+  }
+
+  private platformAdminProfile(user: {
+    id: bigint;
+    email: string;
+    username: string | null;
+    platformRole: string | null;
+  }) {
+    return {
+      id: user.id.toString(),
+      email: user.email,
+      username: user.username,
+      type: 'platform_admin',
+      platformRole: user.platformRole,
+      status: 'active',
+    };
   }
 }
