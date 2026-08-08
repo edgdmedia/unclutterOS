@@ -9,8 +9,18 @@ export class CsrfGuard implements CanActivate {
     const req = context.switchToHttp().getRequest();
     const path = req.path || req.url || '';
 
+    const EXEMPT_PATTERNS = [
+      '/auth/',
+      '/login',
+      '/register',
+      '/forgot-password',
+      '/reset-password',
+      '/verify-email',
+      '/invite',
+    ];
+
     // Safe HTTP methods and authentication entry points are exempt from CSRF validation
-    if (SAFE_METHODS.has(req.method) || path.includes('/auth/')) {
+    if (SAFE_METHODS.has(req.method) || EXEMPT_PATTERNS.some((p) => path.includes(p))) {
       return true;
     }
 
