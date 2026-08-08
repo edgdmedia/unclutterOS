@@ -11,6 +11,7 @@ interface AuthProfile {
   status: string;
   avatarUrl?: string;
   tenantId?: string;
+  platformRole?: string;
 }
 
 interface AuthContextValue {
@@ -18,6 +19,7 @@ interface AuthContextValue {
   isLoading: boolean;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<AuthProfile>;
+  loginAdmin: (email: string, password: string) => Promise<AuthProfile>;
   logout: () => Promise<void>;
 }
 
@@ -90,6 +92,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return res.profile;
   }, []);
 
+  const loginAdmin = useCallback(async (email: string, password: string) => {
+    const res = await api.post<{ profile: AuthProfile }>('/v1/admin/auth/login', { email, password });
+    setProfile(res.profile);
+    cacheProfile(res.profile);
+    return res.profile;
+  }, []);
+
   const logout = useCallback(async () => {
     setProfile(null);
     cacheProfile(null);
@@ -104,6 +113,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isLoading,
         isAuthenticated: !!profile,
         login,
+        loginAdmin,
         logout,
       }}
     >

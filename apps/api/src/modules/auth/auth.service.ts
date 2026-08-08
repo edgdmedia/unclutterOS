@@ -114,8 +114,29 @@ export class AuthService {
     };
   }
 
-  async login(tenantId: bigint, dto: { email: string; password: string }) {
+  async loginPlatformAdmin(dto: { email: string; password: string }) {
     const email = dto.email.toLowerCase().trim();
+    const user = await this.prisma.user.findUnique({ where: { email } });
+    if (!user || !user.platformRole) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+    if (user.lockedUntil && user.lockedUntil > new Date()) {
+      throw new UnauthorizedException('Account temporarily locked. Try again later.');
+    }
+    const passwordValid = await bcrypt.compare(dto.password, user.password);
+    if (!passwordValid) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    const { accessToken, refreshToken } = this.generatePlatformAdminTokens(user, user.platformRole);
+    return {
+      accessToken,
+      refreshToken,
+      profile: this.platformAdminProfile(user),
+    };
+  }
+
+  async login(tenantId: bigint, dto: { email: string; password: string }) {    const email = dto.email.toLowerCase().trim();
 
     const profile = await this.prisma.profile.findFirst({
       where: { tenantId, email },

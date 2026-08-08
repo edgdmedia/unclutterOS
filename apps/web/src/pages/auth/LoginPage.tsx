@@ -21,7 +21,7 @@ export function LoginPage() {
     setError(null);
     try {
       const profile = await login(email, password);
-      navigate(profile.type === 'user' ? '/dashboard' : '/portal');
+      navigate(profile.type === 'user' ? '/dashboard' : profile.type === 'platform_admin' ? '/admin' : '/portal');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed. Check your credentials.');
     }

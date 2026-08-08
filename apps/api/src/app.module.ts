@@ -7,9 +7,10 @@ import { ConsultModule } from './modules/consult/consult.module';
 import { IntakeModule } from './modules/intake/intake.module';
 import { NotesModule } from './modules/notes/notes.module';
 import { BillingModule } from './modules/billing/billing.module';
+import { AdminModule } from './modules/admin/admin.module';
 
 @Module({
-  imports: [TenantModule, AuthModule, ConsultModule, IntakeModule, NotesModule, BillingModule],
+  imports: [TenantModule, AuthModule, ConsultModule, IntakeModule, NotesModule, BillingModule, AdminModule],
   providers: [PrismaService],
 })
 export class AppModule implements NestModule {

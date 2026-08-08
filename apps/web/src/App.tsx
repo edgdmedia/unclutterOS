@@ -40,6 +40,11 @@ const ResetPasswordPage = lazy(() => import('./pages/auth/ResetPasswordPage').th
 const VerifyEmailPage = lazy(() => import('./pages/auth/VerifyEmailPage').then((m) => ({ default: m.VerifyEmailPage })));
 const InvitePage = lazy(() => import('./pages/auth/InvitePage').then((m) => ({ default: m.InvitePage })));
 const ClientAccountSetupPage = lazy(() => import('./pages/auth/ClientAccountSetupPage').then((m) => ({ default: m.ClientAccountSetupPage })));
+const PlatformAdminLoginPage = lazy(() => import('./pages/admin/PlatformAdminLoginPage').then((m) => ({ default: m.PlatformAdminLoginPage })));
+const PlatformAdminLayout = lazy(() => import('./pages/admin/PlatformAdminLayout').then((m) => ({ default: m.PlatformAdminLayout })));
+const AdminOverviewPage = lazy(() => import('./pages/admin/AdminOverviewPage').then((m) => ({ default: m.AdminOverviewPage })));
+const AdminTenantsPage = lazy(() => import('./pages/admin/AdminTenantsPage').then((m) => ({ default: m.AdminTenantsPage })));
+const AdminTenantDetailPage = lazy(() => import('./pages/admin/AdminTenantDetailPage').then((m) => ({ default: m.AdminTenantDetailPage })));
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -333,6 +338,12 @@ function AppLayout() {
 
   const location = useLocation();
 
+  // Platform admin console — own shell, no tenant branding.
+  const isAdminRoute = location.pathname === '/admin' || location.pathname.startsWith('/admin/');
+  if (isAdminRoute) {
+    return <AdminShell />;
+  }
+
   // Fullscreen routes without standard sidebar layout
   const isFullscreen =
     location.pathname.startsWith('/session') ||
@@ -441,13 +452,54 @@ function AppLayout() {
               <Route path="/settings/payouts" element={<PayoutSettingsPage />} />
               <Route path="/settings/forms" element={<FormsManagerPage />} />
               <Route path="/settings/forms/:id" element={<FormEditorPage />} />
-              <Route path="/" element={<Navigate to="/portal" replace />} />
+              <Route path="/" element={<RootRedirect />} />
             </Routes>
           </Suspense>
         </div>
       </div>
     </BrandProvider>
   );
+}
+
+// ── Platform Admin Console ─────────────────────────────────────────────────────
+
+function AdminShell() {
+  const { profile, isLoading, isAuthenticated } = useAuth();
+  const location = useLocation();
+  const isLogin = location.pathname === '/admin/login';
+
+  if (isLoading) return <PageFallback />;
+
+  if (isLogin) {
+    if (isAuthenticated && profile?.type === 'platform_admin') {
+      return <Navigate to="/admin" replace />;
+    }
+    return (
+      <Suspense fallback={<PageFallback />}>
+        <PlatformAdminLoginPage />
+      </Suspense>
+    );
+  }
+
+  if (!isAuthenticated) return <Navigate to="/admin/login" replace />;
+  if (profile?.type !== 'platform_admin') return <Navigate to="/login" replace />;
+
+  return (
+    <Suspense fallback={<PageFallback />}>
+      <Routes>
+        <Route element={<PlatformAdminLayout />}>
+          <Route path="/admin" element={<AdminOverviewPage />} />
+          <Route path="/admin/tenants" element={<AdminTenantsPage />} />
+          <Route path="/admin/tenants/:id" element={<AdminTenantDetailPage />} />
+        </Route>
+      </Routes>
+    </Suspense>
+  );
+}
+
+function RootRedirect() {
+  const { profile } = useAuth();
+  return <Navigate to={profile?.type === 'platform_admin' ? '/admin' : '/portal'} replace />;
 }
 
 export function App() {
