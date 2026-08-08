@@ -2,7 +2,7 @@
 set -e
 
 # Target Virtualmin directory path
-TARGET_DIR="/home/unclutter/domains/app.unclutter.com.ng/app"
+TARGET_DIR="/home/unclutter/domains/os.unclutter.com.ng/app"
 
 echo "🚀 Starting UnclutterOS Production Deployment at $TARGET_DIR..."
 
@@ -30,4 +30,4 @@ npx prisma migrate deploy
 echo "🔄 Reloading PM2 process..."
 pm2 reload ecosystem.config.js --env production || pm2 start ecosystem.config.js --env production
 
-echo "✅ UnclutterOS API Deployed Successfully on app.unclutter.com.ng!"
+echo "✅ UnclutterOS API Deployed Successfully on os.unclutter.com.ng!"
