@@ -33,6 +33,7 @@ const AvailabilitySettingsPage = lazy(() => import('./pages/AvailabilitySettings
 const MyProfilePage = lazy(() => import('./pages/MyProfilePage').then((m) => ({ default: m.MyProfilePage })));
 const AccountPreferencesPage = lazy(() => import('./pages/AccountPreferencesPage').then((m) => ({ default: m.AccountPreferencesPage })));
 const PracticeProfilePage = lazy(() => import('./pages/PracticeProfilePage').then((m) => ({ default: m.PracticeProfilePage })));
+const LandingPage = lazy(() => import('./pages/LandingPage').then((m) => ({ default: m.LandingPage })));
 const LoginPage = lazy(() => import('./pages/auth/LoginPage').then((m) => ({ default: m.LoginPage })));
 const SignupPage = lazy(() => import('./pages/auth/SignupPage').then((m) => ({ default: m.SignupPage })));
 const ForgotPasswordPage = lazy(() => import('./pages/auth/ForgotPasswordPage').then((m) => ({ default: m.ForgotPasswordPage })));
@@ -358,6 +359,7 @@ function AppLayout() {
     location.pathname === '/dashboard' ||
     location.pathname === '/login' ||
     location.pathname === '/register' ||
+    location.pathname === '/' ||
     location.pathname === '/forgot-password' ||
     location.pathname.startsWith('/reset-password') ||
     location.pathname === '/verify-email';
@@ -375,6 +377,9 @@ function AppLayout() {
             <Route path="/booking/inactive" element={<InactivePracticePage />} />
             <Route path="/booking/:slug/review" element={<PublicReviewFormPage />} />
             <Route path="/booking/:slug" element={<ClientBookingPage />} />
+
+            {/* Public landing page */}
+            <Route path="/" element={isAuthenticated ? <Navigate to="/portal" replace /> : <LandingPage />} />
 
             {/* Auth Routes */}
             <Route path="/auth/login" element={<LoginPage />} />

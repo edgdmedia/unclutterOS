@@ -32,6 +32,10 @@
   --brand-ring: rgba(15, 58, 83, 0.2);
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 body {
   font-family: 'Outfit', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   background-color: var(--os-surface);
