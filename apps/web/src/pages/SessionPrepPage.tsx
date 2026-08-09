@@ -70,7 +70,7 @@ export function SessionPrepPage() {
     <div className="min-h-screen bg-[#F8FAFC] flex">
       <div className="flex-1 min-w-0 flex flex-col">
         <header className="h-[70px] shrink-0 bg-white border-b border-[#E2E8F0] px-[24px] flex items-center gap-4">
-          <button onClick={() => navigate('/schedule')} className="h-[40px] px-4 rounded-[13px] bg-white border border-[#E2E8F0] text-[#334155] text-[13px] font-bold flex items-center gap-2 hover:bg-[#F1F5F9] cursor-pointer">
+          <button onClick={() => navigate('/portal/schedule')} className="h-[40px] px-4 rounded-[13px] bg-white border border-[#E2E8F0] text-[#334155] text-[13px] font-bold flex items-center gap-2 hover:bg-[#F1F5F9] cursor-pointer">
             <ArrowLeft className="h-4 w-4" /> Back to schedule
           </button>
         </header>

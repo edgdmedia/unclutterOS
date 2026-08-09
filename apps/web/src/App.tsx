@@ -433,19 +433,19 @@ function AppLayout() {
                   />
                 }
               />
-              <Route path="/schedule" element={<SchedulePage sessions={resolvedSessions} setSessions={setSessions} clients={resolvedClients} />} />
-              <Route path="/clients" element={<ClientsPage clients={resolvedClients} setClients={setClients} onRefresh={refreshClients} />} />
-              <Route path="/clients/:id" element={<ClientDetailPage clients={resolvedClients} setClients={setClients} />} />
-              <Route path="/analytics" element={<AnalyticsPage clients={resolvedClients} sessions={resolvedSessions} />} />
-              <Route path="/submissions" element={<SubmissionsPage />} />
-              <Route path="/notifications" element={<NotificationsPage />} />
-              <Route path="/settings/notifications" element={<NotificationsPage />} />
-              <Route path="/profile" element={<MyProfilePage />} />
-              <Route path="/settings/account" element={<AccountPreferencesPage />} />
-              <Route path="/settings/availability" element={<AvailabilitySettingsPage />} />
-              <Route path="/settings/profile" element={<PracticeProfilePage />} />
+              <Route path="/portal/schedule" element={<SchedulePage sessions={resolvedSessions} setSessions={setSessions} clients={resolvedClients} />} />
+              <Route path="/portal/clients" element={<ClientsPage clients={resolvedClients} setClients={setClients} onRefresh={refreshClients} />} />
+              <Route path="/portal/clients/:id" element={<ClientDetailPage clients={resolvedClients} setClients={setClients} />} />
+              <Route path="/portal/analytics" element={<AnalyticsPage clients={resolvedClients} sessions={resolvedSessions} />} />
+              <Route path="/portal/submissions" element={<SubmissionsPage />} />
+              <Route path="/portal/notifications" element={<NotificationsPage />} />
+              <Route path="/portal/settings/notifications" element={<NotificationsPage />} />
+              <Route path="/portal/profile" element={<MyProfilePage />} />
+              <Route path="/portal/settings/account" element={<AccountPreferencesPage />} />
+              <Route path="/portal/settings/availability" element={<AvailabilitySettingsPage />} />
+              <Route path="/portal/settings/profile" element={<PracticeProfilePage />} />
               <Route
-                path="/settings/brand"
+                path="/portal/settings/brand"
                 element={
                   <BrandSettingsPage
                     primaryColor={primaryColor}
@@ -455,11 +455,11 @@ function AppLayout() {
                   />
                 }
               />
-              <Route path="/settings/team" element={<TeamSettingsPage staff={resolvedStaff} setStaff={setStaff} onRefresh={refreshStaff} />} />
-              <Route path="/settings/subscription" element={<SubscriptionSettingsPage />} />
-              <Route path="/settings/payouts" element={<PayoutSettingsPage />} />
-              <Route path="/settings/forms" element={<FormsManagerPage />} />
-              <Route path="/settings/forms/:id" element={<FormEditorPage />} />
+              <Route path="/portal/settings/team" element={<TeamSettingsPage staff={resolvedStaff} setStaff={setStaff} onRefresh={refreshStaff} />} />
+              <Route path="/portal/settings/subscription" element={<SubscriptionSettingsPage />} />
+              <Route path="/portal/settings/payouts" element={<PayoutSettingsPage />} />
+              <Route path="/portal/settings/forms" element={<FormsManagerPage />} />
+              <Route path="/portal/settings/forms/:id" element={<FormEditorPage />} />
               <Route path="/" element={<RootRedirect />} />
             </Routes>
           </Suspense>

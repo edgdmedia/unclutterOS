@@ -123,7 +123,7 @@ export function ClientDetailPage({ clients, setClients }: ClientDetailPageProps)
       {/* 70px Header Bar */}
       <header className="h-[70px] bg-white border-b border-[#E2E8F0] px-[26px] flex items-center justify-between gap-5 shrink-0 print:hidden">
         <div className="flex items-center gap-2 text-sm">
-          <Link to="/clients" className="font-semibold text-[#64748B] hover:text-[#0F172A]">
+          <Link to="/portal/clients" className="font-semibold text-[#64748B] hover:text-[#0F172A]">
             Clients
           </Link>
           <ChevronRight className="h-4 w-4 text-[#94A3B8]" />

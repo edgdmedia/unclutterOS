@@ -31,34 +31,34 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { to: '/portal', label: 'Overview', icon: LayoutDashboard },
-  { to: '/schedule', label: 'Schedule', icon: Calendar },
-  { to: '/clients', label: 'Clients', icon: Users },
-  { to: '/submissions', label: 'Submissions', icon: ClipboardCheck },
-  { to: '/analytics', label: 'Analytics', icon: BarChart3 },
-  { to: '/notifications', label: 'Notifications', icon: Bell },
+  { to: '/portal/schedule', label: 'Schedule', icon: Calendar },
+  { to: '/portal/clients', label: 'Clients', icon: Users },
+  { to: '/portal/submissions', label: 'Submissions', icon: ClipboardCheck },
+  { to: '/portal/analytics', label: 'Analytics', icon: BarChart3 },
+  { to: '/portal/notifications', label: 'Notifications', icon: Bell },
 ];
 
 const ACCOUNT_MENU_ITEMS: { to: string; label: string; icon: typeof IdCard }[] = [
-  { to: '/profile', label: 'My profile', icon: IdCard },
-  { to: '/settings/account', label: 'Account & preferences', icon: UserCog },
+  { to: '/portal/profile', label: 'My profile', icon: IdCard },
+  { to: '/portal/settings/account', label: 'Account & preferences', icon: UserCog },
 ];
 
 const PRACTICE_GROUPS: { label: string; items: NavItem[] }[] = [
   {
     label: 'Client-facing',
     items: [
-      { to: '/settings/profile', label: 'Practice profile', icon: IdCard },
-      { to: '/settings/brand', label: 'Brand & booking page', icon: Palette },
+      { to: '/portal/settings/profile', label: 'Practice profile', icon: IdCard },
+      { to: '/portal/settings/brand', label: 'Brand & booking page', icon: Palette },
     ],
   },
   {
     label: 'Operations',
     items: [
-      { to: '/settings/availability', label: 'Availability', icon: CalendarClock },
-      { to: '/settings/team', label: 'Team & staff', icon: Users },
-      { to: '/settings/subscription', label: 'Subscription', icon: CreditCard },
-      { to: '/settings/payouts', label: 'Payouts', icon: CreditCard },
-      { to: '/settings/forms', label: 'Forms & assessments', icon: FileText },
+      { to: '/portal/settings/availability', label: 'Availability', icon: CalendarClock },
+      { to: '/portal/settings/team', label: 'Team & staff', icon: Users },
+      { to: '/portal/settings/subscription', label: 'Subscription', icon: CreditCard },
+      { to: '/portal/settings/payouts', label: 'Payouts', icon: CreditCard },
+      { to: '/portal/settings/forms', label: 'Forms & assessments', icon: FileText },
     ],
   },
 ];

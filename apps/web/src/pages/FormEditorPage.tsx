@@ -152,7 +152,7 @@ export function FormEditorPage() {
       } else {
         await api.patch(`/v1/intake/forms/${id}`, payload);
       }
-      navigate('/settings/forms');
+      navigate('/portal/settings/forms');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to save form');
     } finally {
@@ -166,7 +166,7 @@ export function FormEditorPage() {
     <div className="min-h-screen bg-[#F1F5F9] text-[#0F172A] font-outfit flex flex-col justify-between">
       <header className="h-[78px] bg-white border-b border-[#E2E8F0] px-6 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-4">
-          <Link to="/settings/forms" className="inline-flex items-center gap-1.5 text-xs font-bold text-[#64748B] hover:text-[#0F172A]">
+          <Link to="/portal/settings/forms" className="inline-flex items-center gap-1.5 text-xs font-bold text-[#64748B] hover:text-[#0F172A]">
             <ArrowLeft className="h-4 w-4" />
             <span>Back to forms</span>
           </Link>
