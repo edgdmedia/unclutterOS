@@ -675,7 +675,7 @@ export class AuthService {
 
     const profile = await this.prisma.profile.findUnique({
       where: { id: BigInt(payload.profileId) },
-      include: { user: true },
+      include: { user: true, tenant: true },
     });
 
     if (!profile || !profile.user) {
@@ -701,6 +701,8 @@ export class AuthService {
         type: profile.type,
         status: profile.status,
         avatarUrl: profile.avatarUrl,
+        practiceName: profile.tenant?.name,
+        tenantSlug: profile.tenant?.slug,
       },
     };
   }

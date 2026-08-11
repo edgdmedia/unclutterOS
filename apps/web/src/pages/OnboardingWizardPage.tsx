@@ -77,6 +77,7 @@ export function OnboardingWizardPage() {
 
   const [practiceName, setPracticeName] = useState(initialPracticeName);
   const [slug, setSlug] = useState(initialSlug);
+  const [customDomain, setCustomDomain] = useState('');
   const [primaryColor, setPrimaryColor] = useState('#0F3A53');
   const [secondaryColor, setSecondaryColor] = useState('#E3B341');
   const [logoUrl, setLogoUrl] = useState('');
@@ -95,7 +96,12 @@ export function OnboardingWizardPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const bookingUrl = useMemo(() => getBookingUrl(slug), [slug]);
+  const bookingUrl = useMemo(() => {
+    if (customDomain) {
+      return customDomain.startsWith('http') ? customDomain : `https://${customDomain}`;
+    }
+    return getBookingUrl(slug);
+  }, [slug, customDomain]);
 
   useEffect(() => {
     let cancelled = false;
@@ -104,6 +110,7 @@ export function OnboardingWizardPage() {
         const brand = await api.get<{
           name?: string;
           slug?: string;
+          customDomain?: string;
           primaryColor?: string;
           secondaryColor?: string;
           logoUrl?: string;
@@ -118,6 +125,7 @@ export function OnboardingWizardPage() {
         if (cancelled) return;
         if (brand.name) setPracticeName(brand.name);
         if (brand.slug) setSlug(brand.slug);
+        if (brand.customDomain) setCustomDomain(brand.customDomain);
         if (brand.primaryColor) setPrimaryColor(brand.primaryColor);
         if (brand.secondaryColor) setSecondaryColor(brand.secondaryColor);
         if (brand.logoUrl) setLogoUrl(brand.logoUrl);
@@ -151,6 +159,7 @@ export function OnboardingWizardPage() {
       await api.patch('/v1/tenant/brand', {
         name: practiceName.trim(),
         slug: slugify(slug),
+        customDomain: customDomain.trim() || undefined,
         primaryColor,
         secondaryColor,
         logoUrl: logoUrl.trim() || undefined,
@@ -426,10 +435,48 @@ export function OnboardingWizardPage() {
                       </div>
                     </div>
 
-                    {/* Logo & Contact Info */}
+                    {/* Logo & Custom Domain */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
                       <div className="space-y-1.5">
-                        <label className="text-[12px] font-bold text-[#475569] block">Public Email</label>
+                        <label className="text-[12px] font-bold text-[#475569] block">
+                          Practice Logo <span className="text-[#94A3B8] font-normal">(image URL)</span>
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <div className="h-[46px] w-[46px] rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] flex items-center justify-center overflow-hidden shrink-0">
+                            {logoUrl ? (
+                              <img src={logoUrl} alt="Logo" className="w-full h-full object-cover" />
+                            ) : (
+                              <Image className="h-5 w-5 text-[#94A3B8]" />
+                            )}
+                          </div>
+                          <input
+                            type="url"
+                            value={logoUrl}
+                            onChange={(e) => setLogoUrl(e.target.value)}
+                            placeholder="https://example.com/logo.png"
+                            className="flex-1 h-[46px] px-3.5 rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-[13px] font-semibold text-[#0F172A] outline-none focus:bg-white focus:border-[#0F3A53] transition-all placeholder:text-[#CBD5E1]"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-[12px] font-bold text-[#475569] block">
+                          Custom Domain <span className="text-[#94A3B8] font-normal">(optional)</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={customDomain}
+                          onChange={(e) => setCustomDomain(e.target.value)}
+                          placeholder="booking.okonkwo.ng"
+                          className="w-full h-[46px] px-3.5 rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-[13.5px] font-semibold text-[#0F172A] outline-none focus:bg-white focus:border-[#0F3A53] transition-all placeholder:text-[#CBD5E1]"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Contact Info */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <label className="text-[12px] font-bold text-[#475569] block">Public Support Email</label>
                         <input
                           type="email"
                           value={publicEmail}
@@ -439,7 +486,7 @@ export function OnboardingWizardPage() {
                         />
                       </div>
                       <div className="space-y-1.5">
-                        <label className="text-[12px] font-bold text-[#475569] block">Public Phone</label>
+                        <label className="text-[12px] font-bold text-[#475569] block">Public Contact Phone</label>
                         <input
                           type="tel"
                           value={publicPhone}
@@ -450,16 +497,17 @@ export function OnboardingWizardPage() {
                       </div>
                     </div>
 
+                    {/* About Practice Textarea */}
                     <div className="space-y-1.5">
                       <label className="text-[12px] font-bold text-[#475569] block">
-                        About Practice / Welcome Tagline <span className="text-[#94A3B8] font-normal">(optional)</span>
+                        About Practice / Welcome Bio <span className="text-[#94A3B8] font-normal">(optional)</span>
                       </label>
-                      <input
-                        type="text"
+                      <textarea
+                        rows={3}
                         value={welcomeMessage}
                         onChange={(e) => setWelcomeMessage(e.target.value)}
-                        placeholder="e.g. Evidence-based individual & couples psychotherapy in Lagos."
-                        className="w-full h-[46px] px-3.5 rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-[13.5px] font-semibold text-[#0F172A] outline-none focus:bg-white focus:border-[#0F3A53] transition-all placeholder:text-[#CBD5E1]"
+                        placeholder="e.g. Evidence-based individual & couples psychotherapy in Lagos. We help clients navigate stress, burnout, and relationship dynamics."
+                        className="w-full p-3.5 rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-[13.5px] font-semibold text-[#0F172A] outline-none focus:bg-white focus:border-[#0F3A53] transition-all placeholder:text-[#CBD5E1] resize-none leading-relaxed"
                       />
                     </div>
                   </div>
