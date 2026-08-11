@@ -1,6 +1,7 @@
 import {
   Injectable,
   BadRequestException,
+  ConflictException,
   UnauthorizedException,
   NotFoundException,
   ForbiddenException,
@@ -8,11 +9,11 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
-import { createHash } from 'crypto';
+import { createHash, randomBytes } from 'crypto';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { JwtPayload } from './jwt.strategy';
 import { JWT_EXPIRES_IN, REFRESH_SECRET, REFRESH_EXPIRES_IN } from '../../common/auth.config';
-import { MailService } from '../mail/mail.service';
+import { NotificationService } from '../notifications/notification.service';
 
 const BCRYPT_ROUNDS = 12;
 
@@ -23,7 +24,7 @@ export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
-    private readonly mailService: MailService,
+    private readonly notifications: NotificationService,
   ) {}
 
   async register(tenantId: bigint | undefined, dto: {
@@ -37,6 +38,20 @@ export class AuthService {
     alsoTherapist?: boolean; // Practice owner who also provides services
   }) {
     const email = dto.email.toLowerCase().trim();
+
+    // Workspace creation requires a brand-new account. If a global User
+    // already exists for this email, re-registering would silently keep the
+    // OLD password (the User row is reused) and create a fresh profile that
+    // can never log in with the password just chosen — surfacing as confusing
+    // "Invalid email or password" on the login screen.
+    if (!tenantId) {
+      const existingUser = await this.prisma.user.findUnique({ where: { email } });
+      if (existingUser) {
+        throw new ConflictException(
+          'An account with this email already exists. Please log in or reset your password.',
+        );
+      }
+    }
 
     // Password policy: min 8 chars with upper, lower, digit and a special char.
     if (!dto.password || dto.password.length < 8) {
@@ -139,8 +154,16 @@ export class AuthService {
     if (!alreadyVerified) {
       const code = await this.createEmailVerificationCode(user.id);
       try {
-        const result = await this.mailService.sendVerificationEmail(profile.email, code);
-        emailSent = !!result.sent;
+        const result = await this.notifications.sendEmail({
+          to: profile.email,
+          type: 'auth.email_verification',
+          title: 'Verify your email address',
+          message: `Welcome to UnclutterOS! Enter this code in the app to activate your account. It expires in 30 minutes.`,
+          code,
+          tenantId: profile.tenantId,
+          profileId: profile.id,
+        });
+        emailSent = result.success === true;
       } catch (err) {
         this.logger.warn(`Failed to send verification email to ${profile.email}: ${(err as Error).message}`);
       }
@@ -195,6 +218,30 @@ export class AuthService {
     return code;
   }
 
+  private async createPasswordResetToken(userId: bigint): Promise<string> {
+    const token = randomBytes(32).toString('hex');
+    const tokenHash = this.hashToken(token);
+    const expiresAt = new Date(
+      Date.now() + this.parseDuration(process.env.PASSWORD_RESET_EXPIRES_IN, 60 * 60 * 1000),
+    );
+
+    await this.prisma.token.deleteMany({
+      where: { userId, type: 'password_reset' },
+    });
+
+    await this.prisma.token.create({
+      data: {
+        id: `${userId.toString()}-password-reset-${Date.now()}`,
+        userId,
+        type: 'password_reset',
+        tokenHash,
+        expiresAt,
+      },
+    });
+
+    return token;
+  }
+
   async verifyEmail(dto: { email: string; code: string }) {
     const email = dto.email.toLowerCase().trim();
     const user = await this.prisma.user.findUnique({ where: { email } });
@@ -210,6 +257,7 @@ export class AuthService {
 
     const profile = await this.prisma.profile.findFirst({ where: { userId: user.id } });
     if (!profile) throw new BadRequestException('Profile not found');
+    const wasVerified = profile.emailVerified === true;
 
     await this.prisma.profile.updateMany({
       where: { userId: user.id },
@@ -221,6 +269,23 @@ export class AuthService {
     });
 
     await this.prisma.token.deleteMany({ where: { userId: user.id, type: 'email_verification' } });
+
+    // First-time verification → send a welcome email. Non-fatal: verification
+    // must succeed even if SMTP is down, so failures are only logged.
+    if (!wasVerified) {
+      try {
+        await this.notifications.sendEmail({
+          to: profile.email,
+          type: 'auth.welcome',
+          title: 'Welcome to UnclutterOS',
+          message: `Your email has been verified and your practice workspace is active. You can now sign in and start booking clients, writing SOAP notes, and more. Get started at os.unclutter.com.ng.`,
+          tenantId: profile.tenantId,
+          profileId: profile.id,
+        });
+      } catch (err) {
+        this.logger.warn(`Failed to send welcome email to ${profile.email}: ${(err as Error).message}`);
+      }
+    }
 
     return { message: 'Email verified successfully', success: true, email: profile.email };
   }
@@ -238,13 +303,89 @@ export class AuthService {
     const code = await this.createEmailVerificationCode(user.id);
     let emailSent = false;
     try {
-      const result = await this.mailService.sendVerificationEmail(email, code);
-      emailSent = !!result.sent;
+      const result = await this.notifications.sendEmail({
+        to: email,
+        type: 'auth.email_verification',
+        title: 'Verify your email address',
+        message: `Welcome to UnclutterOS! Enter this code in the app to activate your account. It expires in 30 minutes.`,
+        code,
+        tenantId: profile.tenantId,
+        profileId: profile.id,
+      });
+      emailSent = result.success === true;
     } catch (err) {
       this.logger.warn(`Failed to resend verification email to ${email}: ${(err as Error).message}`);
     }
 
     return { message: 'Verification code sent', success: true, email_sent: emailSent, alreadyVerified: false };
+  }
+
+  async forgotPassword(dto: { email: string }) {
+    const email = dto.email.toLowerCase().trim();
+    const user = await this.prisma.user.findUnique({ where: { email } });
+
+    // Always answer the same way so the endpoint can't be used to enumerate
+    // which emails have UnclutterOS accounts.
+    const generic = { message: 'If an account exists for this email, a reset link has been sent.', success: true };
+    if (!user) return generic;
+
+    const token = await this.createPasswordResetToken(user.id);
+    const baseUrl = (process.env.APP_BASE_URL || 'https://os.unclutter.com.ng').replace(/\/+$/, '');
+    const resetLink = `${baseUrl}/reset-password/${token}`;
+
+    try {
+      await this.notifications.sendEmail({
+        to: email,
+        type: 'auth.password_reset',
+        title: 'Reset your password',
+        message: `We received a request to reset the password for your UnclutterOS account. Click the button below to choose a new one. This link expires in 1 hour.`,
+        link: resetLink,
+        actionLabel: 'Reset password',
+      });
+    } catch (err) {
+      this.logger.warn(`Failed to send password reset email to ${email}: ${(err as Error).message}`);
+    }
+
+    return generic;
+  }
+
+  async resetPassword(dto: { token: string; newPassword: string }) {
+    const token = (dto.token || '').trim();
+    if (!token) throw new BadRequestException('Invalid or missing reset token');
+
+    const tokenHash = this.hashToken(token);
+    const reset = await this.prisma.token.findFirst({
+      where: { type: 'password_reset', tokenHash },
+      include: { user: true },
+    });
+    if (!reset) throw new BadRequestException('This reset link is invalid. Please request a new one.');
+    if (reset.expiresAt < new Date()) {
+      throw new BadRequestException('This reset link has expired. Please request a new one.');
+    }
+
+    // Same password policy as registration.
+    const password = dto.newPassword || '';
+    if (password.length < 8) {
+      throw new BadRequestException('Password must be at least 8 characters');
+    }
+    if (!/[A-Z]/.test(password) || !/[a-z]/.test(password)) {
+      throw new BadRequestException('Password must contain both uppercase and lowercase letters');
+    }
+    if (!/[0-9]/.test(password)) {
+      throw new BadRequestException('Password must contain at least one number');
+    }
+    if (!/[^A-Za-z0-9]/.test(password)) {
+      throw new BadRequestException('Password must contain at least one special character');
+    }
+
+    const hashedPassword = await bcrypt.hash(password, BCRYPT_ROUNDS);
+    await this.prisma.user.update({
+      where: { id: reset.userId },
+      data: { password: hashedPassword },
+    });
+    await this.prisma.token.deleteMany({ where: { userId: reset.userId, type: 'password_reset' } });
+
+    return { message: 'Password updated. You can now log in.', success: true };
   }
 
   async loginPlatformAdmin(dto: { email: string; password: string }) {

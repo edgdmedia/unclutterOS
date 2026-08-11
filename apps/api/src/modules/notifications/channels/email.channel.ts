@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { MailService } from '../../mail/mail.service';
+import { MailService } from '../mail/mail.service';
 import {
   ChannelKey,
   ChannelRecipient,
@@ -51,6 +51,12 @@ export class EmailChannel implements NotificationChannel {
     const logo = brand?.logoUrl
       ? `<img src="${brand.logoUrl}" alt="${brand.practiceName}" style="height:36px;margin-bottom:16px;" />`
       : `<div style="font-size:18px;font-weight:700;">${brand?.practiceName || 'UnclutterOS'}</div>`;
+    const code = payload.code
+      ? `<div style="margin:22px 0 4px;padding:20px;border-radius:14px;background:#F8FAFC;text-align:center;">
+          <div style="font-size:12px;letter-spacing:0.12em;color:#64748B;">VERIFICATION CODE</div>
+          <div style="margin-top:8px;font-size:34px;font-weight:800;letter-spacing:0.16em;color:${primary};">${payload.code}</div>
+        </div>`
+      : '';
     const link = payload.link
       ? `<a href="${payload.link}" style="display:inline-block;margin-top:20px;padding:12px 28px;border-radius:10px;background:${primary};color:#FFFFFF;text-decoration:none;font-weight:700;">${payload.actionLabel || 'View'}</a>`
       : '';
@@ -70,6 +76,7 @@ export class EmailChannel implements NotificationChannel {
       ${logo}
       <div style="font-size:22px;font-weight:700;color:#0F172A;">${payload.title}</div>
       <div style="margin-top:12px;font-size:15px;line-height:1.7;color:#334155;white-space:pre-line;">${payload.message}</div>
+      ${code}
       ${link}
       <div style="margin-top:28px;padding-top:20px;border-top:1px solid #E2E8F0;">
         <div style="width:44px;height:5px;border-radius:3px;background:${accent};"></div>

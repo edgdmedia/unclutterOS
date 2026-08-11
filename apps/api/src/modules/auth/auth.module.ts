@@ -6,7 +6,6 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtStrategy } from './jwt.strategy';
 import { CsrfGuard } from './csrf.guard';
-import { MailModule } from '../mail/mail.module';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { JWT_SECRET, JWT_EXPIRES_IN } from '../../common/auth.config';
 
@@ -17,7 +16,6 @@ import { JWT_SECRET, JWT_EXPIRES_IN } from '../../common/auth.config';
       secret: JWT_SECRET,
       signOptions: { expiresIn: JWT_EXPIRES_IN },
     }),
-    MailModule,
   ],
   controllers: [AuthController],
   providers: [

@@ -42,6 +42,18 @@ export class AuthController {
     return this.authService.resendVerification(dto);
   }
 
+  @Post('forgot-password')
+  @ApiOperation({ summary: 'Send a password reset link to the account email' })
+  async forgotPassword(@Body() dto: { email: string }) {
+    return this.authService.forgotPassword(dto);
+  }
+
+  @Post('reset-password')
+  @ApiOperation({ summary: 'Set a new password using a reset token' })
+  async resetPassword(@Body() dto: { token: string; newPassword: string }) {
+    return this.authService.resetPassword(dto);
+  }
+
   @Post('login')
   @ApiOperation({ summary: 'Login with email and password' })
   async login(

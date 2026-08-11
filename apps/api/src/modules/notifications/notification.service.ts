@@ -38,6 +38,23 @@ export interface ReminderInput extends Omit<NotifyInput, 'profileIds'> {
   triggerAt?: Date;
 }
 
+export interface SendEmailInput {
+  /** Recipient email address. */
+  to: string;
+  /** Event type, e.g. "auth.password_reset". */
+  type: string;
+  title: string;
+  message: string;
+  /** Rendered as a prominent code box (e.g. verification codes). */
+  code?: string;
+  link?: string;
+  actionLabel?: string;
+  /** Present when a tenant exists — drives branding; absent for pre-tenant sends. */
+  tenantId?: bigint | null;
+  /** Present when a profile exists — enables emailLog; absent for pre-tenant sends. */
+  profileId?: bigint | null;
+}
+
 /**
  * The notification hub. Modules call `notify()` (immediate) or `queueReminder()`
  * (scheduled) and the hub figures out which channels to fire for each recipient:
@@ -131,6 +148,42 @@ export class NotificationService implements OnModuleInit, OnModuleDestroy {
     return results;
   }
 
+  /**
+   * Direct transactional email (e.g. auth verification / welcome / reset).
+   * Unlike `notify()` this bypasses channel prefs and tenant caps — a
+   * transactional email always goes out. It is pre-tenant capable: when no
+   * tenantId is provided the default (UnclutterOS) branding is used and no
+   * EmailLog row is written; when a tenantId/profileId are present the tenant's
+   * brand is resolved and delivery is recorded in EmailLog.
+   */
+  async sendEmail(input: SendEmailInput): Promise<DeliveryResult> {
+    const channel = this.channel('email');
+    if (!channel) {
+      this.logger.error(`sendEmail: no email channel registered (${input.type})`);
+      return { success: false, error: 'Email channel not registered' };
+    }
+
+    const brand = input.tenantId != null ? await this.resolveBrand(input.tenantId) : undefined;
+    const result = await this.dispatchToChannel(
+      'email',
+      {
+        profileId: input.profileId ?? null,
+        tenantId: input.tenantId ?? null,
+        email: input.to,
+      },
+      {
+        type: input.type,
+        title: input.title,
+        message: input.message,
+        code: input.code,
+        link: input.link,
+        actionLabel: input.actionLabel,
+        brand,
+      },
+    );
+    return result ?? { success: false, error: 'Email channel not registered' };
+  }
+
   private async dispatchToChannel(
     key: ChannelKey,
     recipient: ChannelRecipient,
@@ -146,7 +199,7 @@ export class NotificationService implements OnModuleInit, OnModuleDestroy {
       result = { success: false, error: e?.message ?? 'Channel threw' };
     }
 
-    if (key === 'email') {
+    if (key === 'email' && recipient.tenantId != null && recipient.profileId != null) {
       await this.prisma.emailLog
         .create({
           data: {

@@ -24,6 +24,7 @@ export function SignupPage() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   const passwordChecks = useMemo(() => PASSWORD_RULES.map((rule) => ({ ...rule, ok: rule.test(password) })), [password]);
   const passwordValid = passwordChecks.every((c) => c.ok);
@@ -35,6 +36,7 @@ export function SignupPage() {
       setError('Your password does not meet all the requirements below.');
       return;
     }
+    setSubmitting(true);
     try {
       const nameParts = fullName.trim().split(/\s+/);
       await register({
@@ -49,6 +51,8 @@ export function SignupPage() {
       navigate('/verify-email', { state: { email } });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to create your practice. Please try again.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -220,11 +224,20 @@ export function SignupPage() {
 
         <button
           type="submit"
-          disabled={isLoading}
+          disabled={isLoading || submitting}
           className="w-full h-[54px] rounded-[14px] bg-[#0F3A53] text-white text-[15px] font-bold inline-flex items-center justify-center gap-[10px] cursor-pointer shadow-[0_10px_26px_rgba(15,58,83,0.26)] transition-[filter] hover:brightness-110 disabled:opacity-70 disabled:cursor-not-allowed"
         >
-          <span>{isLoading ? 'Creating your practice…' : 'Create practice workspace'}</span>
-          <ArrowRight className="h-[17px] w-[17px]" strokeWidth={2.4} />
+          {isLoading || submitting ? (
+            <>
+              <span className="inline-block h-4 w-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+              Creating your practice…
+            </>
+          ) : (
+            <>
+              Create practice workspace
+              <ArrowRight className="h-[17px] w-[17px]" strokeWidth={2.4} />
+            </>
+          )}
         </button>
       </form>
 

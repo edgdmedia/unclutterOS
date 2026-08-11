@@ -1,11 +1,11 @@
 import { Global, Module } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
-import { MailModule } from '../mail/mail.module';
 import { EmailChannel } from './channels/email.channel';
 import { InAppChannel } from './channels/in-app.channel';
 import { PushChannel } from './channels/push.channel';
 import { SmsChannel } from './channels/sms.channel';
 import { NOTIFICATION_CHANNELS } from './channels/notification.channel';
+import { MailService } from './mail/mail.service';
 import { NotificationController } from './notification.controller';
 import { NotificationService } from './notification.service';
 
@@ -20,11 +20,11 @@ import { NotificationService } from './notification.service';
  */
 @Global()
 @Module({
-  imports: [MailModule],
   controllers: [NotificationController],
   providers: [
     NotificationService,
     PrismaService,
+    MailService,
     EmailChannel,
     InAppChannel,
     PushChannel,
@@ -40,6 +40,6 @@ import { NotificationService } from './notification.service';
       ],
     },
   ],
-  exports: [NotificationService, PrismaService, EmailChannel, InAppChannel, PushChannel, SmsChannel],
+  exports: [NotificationService, PrismaService, MailService, EmailChannel, InAppChannel, PushChannel, SmsChannel],
 })
 export class NotificationsModule {}

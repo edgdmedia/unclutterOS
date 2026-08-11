@@ -25,6 +25,12 @@ export interface SendMailOptions {
   replyTo?: string;
 }
 
+/**
+ * Low-level SMTP transport used by the email notification channel. This is the
+ * only place that talks to nodemailer — all rendering and dispatch happens in
+ * the notifications hub (NotificationService / EmailChannel), so auth and other
+ * modules never import this directly.
+ */
 @Injectable()
 export class MailService {
   private readonly logger = new Logger(MailService.name);
@@ -45,12 +51,6 @@ export class MailService {
         'SMTP_HOST / SMTP_USER / SMTP_PASS are not set — emails run in PREVIEW mode and are logged to the console.',
       );
     }
-  }
-
-  // Outside production we always log email contents so verification codes are
-  // visible in the dev server without needing real delivery.
-  private shouldLog(): boolean {
-    return process.env.EMAIL_LOG === 'true' || process.env.NODE_ENV !== 'production';
   }
 
   isConfigured(): boolean {
@@ -93,39 +93,5 @@ export class MailService {
       ...(options.replyTo ? { replyTo: options.replyTo } : {}),
     });
     return { sent: true, messageId: result.messageId ?? null };
-  }
-
-  sendVerificationEmail(to: string, code: string): Promise<MailSendResult> {
-    if (this.shouldLog()) {
-      this.logger.log(`Verification code for ${to}: ${code}`);
-    }
-
-    const html = `<!DOCTYPE html>
-<html lang="en">
-<body style="margin:0;padding:0;background:#F8FAFC;font-family:Arial,Helvetica,sans-serif;">
-  <div style="max-width:520px;margin:0 auto;padding:32px 24px;">
-    <div style="background:#0F3A53;border-radius:20px;padding:28px;color:#FFFFFF;">
-      <div style="font-size:18px;font-weight:700;">UnclutterOS</div>
-      <div style="margin-top:20px;font-size:24px;font-weight:700;">Verify your email address</div>
-      <p style="margin-top:8px;font-size:14px;line-height:1.6;color:#CBD5E1;">
-        Welcome! Enter this code in the app to activate your account. It expires in 30 minutes.
-      </p>
-      <div style="margin:22px 0 4px;padding:20px;border-radius:14px;background:#F8FAFC;text-align:center;">
-        <div style="font-size:12px;letter-spacing:0.12em;color:#64748B;">VERIFICATION CODE</div>
-        <div style="margin-top:8px;font-size:34px;font-weight:800;letter-spacing:0.16em;color:#0F3A53;">${code}</div>
-      </div>
-      <p style="margin-top:22px;font-size:11px;color:#64748B;">
-        If you didn't create this account you can ignore this email. The code is single-use.
-      </p>
-    </div>
-  </div>
-</body>
-</html>`;
-    return this.sendMail(
-      to,
-      'Verify your UnclutterOS email',
-      html,
-      `Your UnclutterOS verification code is ${code}. Enter it in the app to activate your account. The code expires in 30 minutes.`,
-    );
   }
 }

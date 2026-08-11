@@ -1,16 +1,28 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Check, Mail } from 'lucide-react';
+import { Check, Loader2, Mail } from 'lucide-react';
 import { AuthCardShell } from '../../components/AuthCardShell';
 import { AuthField, authInputCls } from '../../components/AuthField';
+import { api } from '../../utils/apiClient';
 
 export function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSent(true);
+    setError('');
+    setSending(true);
+    try {
+      await api.post('/v1/auth/forgot-password', { email });
+      setSent(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
@@ -35,7 +47,7 @@ export function ForgotPasswordPage() {
             Check your inbox for instructions. The link is good for one hour.
           </p>
           <button
-            onClick={() => setSent(false)}
+            onClick={() => { setSent(false); setError(''); }}
             className="mt-[18px] h-11 px-[18px] border border-[#BBF7D0] rounded-[13px] bg-white text-[#15803D] text-[13.5px] font-bold cursor-pointer transition-colors hover:bg-[#F0FDF4]"
           >
             Send it again
@@ -66,11 +78,25 @@ export function ForgotPasswordPage() {
             </AuthField>
           </div>
 
+          {error && (
+            <div className="mt-[18px] p-4 rounded-[14px] bg-[#FEF2F2] border border-[#FECACA] text-[13.5px] font-semibold text-[#B91C1C] leading-[1.5]">
+              {error}
+            </div>
+          )}
+
           <button
             type="submit"
-            className="mt-[22px] w-full h-[54px] rounded-[14px] bg-[#0F3A53] text-white text-[15px] font-bold cursor-pointer shadow-[0_10px_26px_rgba(15,58,83,0.26)] transition-[filter] hover:brightness-110"
+            disabled={sending}
+            className="mt-[22px] w-full h-[54px] rounded-[14px] bg-[#0F3A53] text-white text-[15px] font-bold cursor-pointer shadow-[0_10px_26px_rgba(15,58,83,0.26)] transition-[filter] hover:brightness-110 disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
           >
-            Send reset link
+            {sending ? (
+              <>
+                <Loader2 className="h-[18px] w-[18px] animate-spin" strokeWidth={2.4} />
+                Sending…
+              </>
+            ) : (
+              'Send reset link'
+            )}
           </button>
         </form>
       )}

@@ -12,8 +12,10 @@ export interface ChannelBrand {
 }
 
 export interface ChannelRecipient {
-  profileId: bigint;
-  tenantId: bigint;
+  /** Null for pre-tenant sends (e.g. password reset before any profile exists). */
+  profileId: bigint | null;
+  /** Null for pre-tenant sends — the hub then falls back to default branding. */
+  tenantId: bigint | null;
   userId?: bigint | null;
   email?: string | null;
   phone?: string | null;
@@ -24,6 +26,8 @@ export interface ChannelPayload {
   type: string;
   title: string;
   message: string;
+  /** Rendered as a prominent code box (e.g. email verification codes). */
+  code?: string;
   link?: string;
   actionLabel?: string;
   data?: Record<string, unknown>;
