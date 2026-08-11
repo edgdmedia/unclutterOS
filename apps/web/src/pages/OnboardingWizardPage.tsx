@@ -77,6 +77,7 @@ export function OnboardingWizardPage() {
 
   const [practiceName, setPracticeName] = useState(initialPracticeName);
   const [slug, setSlug] = useState(initialSlug);
+  const [slugTouched, setSlugTouched] = useState(false);
   const [customDomain, setCustomDomain] = useState('');
   const [primaryColor, setPrimaryColor] = useState('#0F3A53');
   const [secondaryColor, setSecondaryColor] = useState('#E3B341');
@@ -95,6 +96,19 @@ export function OnboardingWizardPage() {
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Dynamic subdomain handle auto-update when practice name changes
+  const handlePracticeNameChange = (val: string) => {
+    setPracticeName(val);
+    if (!slugTouched) {
+      setSlug(slugify(val));
+    }
+  };
+
+  const handleSlugChange = (val: string) => {
+    setSlugTouched(true);
+    setSlug(slugify(val));
+  };
 
   const bookingUrl = useMemo(() => {
     if (customDomain) {
@@ -123,8 +137,16 @@ export function OnboardingWizardPage() {
           cancellationHours?: number;
         }>('/v1/tenant/brand');
         if (cancelled) return;
-        if (brand.name) setPracticeName(brand.name);
-        if (brand.slug) setSlug(brand.slug);
+        if (brand.name) {
+          setPracticeName(brand.name);
+          if (!slugTouched && !brand.slug) {
+            setSlug(slugify(brand.name));
+          }
+        }
+        if (brand.slug) {
+          setSlug(brand.slug);
+          setSlugTouched(true);
+        }
         if (brand.customDomain) setCustomDomain(brand.customDomain);
         if (brand.primaryColor) setPrimaryColor(brand.primaryColor);
         if (brand.secondaryColor) setSecondaryColor(brand.secondaryColor);
@@ -144,7 +166,7 @@ export function OnboardingWizardPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [slugTouched]);
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(bookingUrl);
@@ -336,184 +358,221 @@ export function OnboardingWizardPage() {
                     </p>
                   </div>
 
-                  <div className="space-y-4">
-                    {/* Practice Name & Handle */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="space-y-1.5">
-                        <label className="text-[12px] font-bold text-[#475569] block">
-                          {isPractice ? 'Clinic / Practice Name' : 'Practice Name'}
-                        </label>
-                        <input
-                          type="text"
-                          value={practiceName}
-                          onChange={(e) => setPracticeName(e.target.value)}
-                          placeholder="e.g. Okonkwo Therapy Practice"
-                          className="w-full h-[48px] px-4 rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-[14px] font-semibold text-[#0F172A] outline-none focus:bg-white focus:border-[#0F3A53] transition-all placeholder:text-[#CBD5E1]"
-                        />
+                  <div className="space-y-6">
+                    {/* SECTION 1: Basic Practice Profile */}
+                    <div className="space-y-3">
+                      <div className="text-[11px] font-extrabold tracking-widest text-[#0F3A53] uppercase border-b border-slate-200 pb-1.5 flex items-center gap-1.5">
+                        <Building2 className="h-3.5 w-3.5" />
+                        <span>1. Practice Identity</span>
                       </div>
 
-                      <div className="space-y-1.5">
-                        <label className="text-[12px] font-bold text-[#475569] block">Category / Specialty</label>
-                        <input
-                          type="text"
-                          value={category}
-                          onChange={(e) => setCategory(e.target.value)}
-                          placeholder="e.g. Clinical Psychology"
-                          className="w-full h-[48px] px-4 rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-[14px] font-semibold text-[#0F172A] outline-none focus:bg-white focus:border-[#0F3A53] transition-all placeholder:text-[#CBD5E1]"
-                        />
-                      </div>
-                    </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
+                          <label className="text-[12px] font-bold text-[#475569] block">
+                            {isPractice ? 'Clinic / Practice Name' : 'Practice Name'}
+                          </label>
+                          <input
+                            type="text"
+                            value={practiceName}
+                            onChange={(e) => handlePracticeNameChange(e.target.value)}
+                            placeholder="e.g. Okonkwo Therapy Practice"
+                            className="w-full h-[48px] px-4 rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-[14px] font-semibold text-[#0F172A] outline-none focus:bg-white focus:border-[#0F3A53] transition-all placeholder:text-[#CBD5E1]"
+                          />
+                        </div>
 
-                    <div className="space-y-1.5">
-                      <label className="text-[12px] font-bold text-[#475569] block">Subdomain Handle</label>
-                      <div className="h-[48px] bg-[#F8FAFC] border border-[#E2E8F0] rounded-[14px] px-3.5 flex items-center gap-1.5 focus-within:bg-white focus-within:border-[#0F3A53] transition-all">
-                        <span className="text-xs font-semibold text-[#64748B] shrink-0">https://</span>
-                        <input
-                          type="text"
-                          value={slug}
-                          onChange={(e) => setSlug(slugify(e.target.value))}
-                          placeholder="okonkwo-therapy"
-                          className="flex-1 bg-transparent text-xs font-bold text-[#0F172A] outline-none placeholder:text-[#CBD5E1]"
-                        />
-                        <span className="text-xs font-semibold text-[#64748B] shrink-0">.os.unclutter.com.ng</span>
-                        <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 shrink-0">
-                          AVAILABLE
-                        </span>
+                        <div className="space-y-1.5">
+                          <label className="text-[12px] font-bold text-[#475569] block">Category / Specialty</label>
+                          <input
+                            type="text"
+                            value={category}
+                            onChange={(e) => setCategory(e.target.value)}
+                            placeholder="e.g. Clinical Psychology"
+                            className="w-full h-[48px] px-4 rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-[14px] font-semibold text-[#0F172A] outline-none focus:bg-white focus:border-[#0F3A53] transition-all placeholder:text-[#CBD5E1]"
+                          />
+                        </div>
                       </div>
                     </div>
 
-                    {/* Brand Colors */}
-                    <div className="space-y-2 pt-1">
-                      <label className="text-[12px] font-bold text-[#475569] flex items-center justify-between">
-                        <span>Brand Color Palette</span>
-                        <span className="text-[10.5px] text-[#64748B] font-normal">Select a preset or custom hex</span>
-                      </label>
-                      <div className="flex flex-wrap gap-2">
-                        {BRAND_PALETTES.map((p) => (
-                          <button
-                            key={p.name}
-                            type="button"
-                            onClick={() => {
-                              setPrimaryColor(p.primary);
-                              setSecondaryColor(p.secondary);
-                            }}
-                            className={`h-10 px-3 rounded-[12px] text-xs font-bold flex items-center gap-2 border cursor-pointer transition-all ${
-                              primaryColor === p.primary && secondaryColor === p.secondary
-                                ? 'bg-white border-[#0F172A] shadow-xs ring-2 ring-[#0F172A]/20'
-                                : 'bg-[#F8FAFC] border-[#E2E8F0] hover:bg-slate-100'
-                            }`}
-                          >
-                            <span className="h-4 w-4 rounded-full flex overflow-hidden border border-black/10 shrink-0">
-                              <span className="w-1/2 h-full" style={{ backgroundColor: p.primary }} />
-                              <span className="w-1/2 h-full" style={{ backgroundColor: p.secondary }} />
+                    {/* SECTION 2: Web Presence & Booking Address */}
+                    <div className="space-y-3">
+                      <div className="text-[11px] font-extrabold tracking-widest text-[#0F3A53] uppercase border-b border-slate-200 pb-1.5 flex items-center gap-1.5">
+                        <Globe className="h-3.5 w-3.5" />
+                        <span>2. Booking Web Address</span>
+                      </div>
+
+                      <div className="space-y-3">
+                        <div className="space-y-1.5">
+                          <label className="text-[12px] font-bold text-[#475569] block">Subdomain Handle</label>
+                          <div className="h-[48px] bg-[#F8FAFC] border border-[#E2E8F0] rounded-[14px] px-3.5 flex items-center gap-1.5 focus-within:bg-white focus-within:border-[#0F3A53] transition-all">
+                            <span className="text-xs font-semibold text-[#64748B] shrink-0">https://</span>
+                            <input
+                              type="text"
+                              value={slug}
+                              onChange={(e) => handleSlugChange(e.target.value)}
+                              placeholder="okonkwo-therapy"
+                              className="flex-1 bg-transparent text-xs font-bold text-[#0F172A] outline-none placeholder:text-[#CBD5E1]"
+                            />
+                            <span className="text-xs font-semibold text-[#64748B] shrink-0">.os.unclutter.com.ng</span>
+                            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 shrink-0">
+                              AVAILABLE
                             </span>
-                            <span className="text-[#0F172A]">{p.name}</span>
-                          </button>
-                        ))}
-                      </div>
-                      <div className="flex items-center gap-3 pt-1">
-                        <div className="flex items-center gap-2 bg-[#F8FAFC] border border-[#E2E8F0] rounded-[12px] px-3 py-1.5">
-                          <span className="text-[11px] font-bold text-[#475569]">Primary:</span>
-                          <input
-                            type="color"
-                            value={primaryColor}
-                            onChange={(e) => setPrimaryColor(e.target.value)}
-                            className="h-6 w-6 rounded cursor-pointer border-0 bg-transparent"
-                          />
-                          <span className="text-xs font-mono font-bold text-[#0F172A]">{primaryColor}</span>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2 bg-[#F8FAFC] border border-[#E2E8F0] rounded-[12px] px-3 py-1.5">
-                          <span className="text-[11px] font-bold text-[#475569]">Accent:</span>
-                          <input
-                            type="color"
-                            value={secondaryColor}
-                            onChange={(e) => setSecondaryColor(e.target.value)}
-                            className="h-6 w-6 rounded cursor-pointer border-0 bg-transparent"
-                          />
-                          <span className="text-xs font-mono font-bold text-[#0F172A]">{secondaryColor}</span>
-                        </div>
-                      </div>
-                    </div>
 
-                    {/* Logo & Custom Domain */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
-                      <div className="space-y-1.5">
-                        <label className="text-[12px] font-bold text-[#475569] block">
-                          Practice Logo <span className="text-[#94A3B8] font-normal">(image URL)</span>
-                        </label>
-                        <div className="flex items-center gap-2">
-                          <div className="h-[46px] w-[46px] rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] flex items-center justify-center overflow-hidden shrink-0">
-                            {logoUrl ? (
-                              <img src={logoUrl} alt="Logo" className="w-full h-full object-cover" />
-                            ) : (
-                              <Image className="h-5 w-5 text-[#94A3B8]" />
-                            )}
+                        <div className="space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <label className="text-[12px] font-bold text-[#475569] block">
+                              Custom Domain <span className="text-[#94A3B8] font-normal">(optional)</span>
+                            </label>
+                            <span className="text-[10.5px] text-[#0F766E] font-semibold flex items-center gap-1">
+                              <Info className="h-3 w-3" />
+                              CNAME setup guide provided after setup
+                            </span>
                           </div>
                           <input
-                            type="url"
-                            value={logoUrl}
-                            onChange={(e) => setLogoUrl(e.target.value)}
-                            placeholder="https://example.com/logo.png"
-                            className="flex-1 h-[46px] px-3.5 rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-[13px] font-semibold text-[#0F172A] outline-none focus:bg-white focus:border-[#0F3A53] transition-all placeholder:text-[#CBD5E1]"
+                            type="text"
+                            value={customDomain}
+                            onChange={(e) => setCustomDomain(e.target.value)}
+                            placeholder="e.g. booking.okonkwo.ng or okonkwotherapy.com"
+                            className="w-full h-[46px] px-3.5 rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-[13.5px] font-semibold text-[#0F172A] outline-none focus:bg-white focus:border-[#0F3A53] transition-all placeholder:text-[#CBD5E1]"
                           />
                         </div>
                       </div>
+                    </div>
 
-                      <div className="space-y-1.5">
-                        <label className="text-[12px] font-bold text-[#475569] block">
-                          Custom Domain <span className="text-[#94A3B8] font-normal">(optional)</span>
-                        </label>
-                        <input
-                          type="text"
-                          value={customDomain}
-                          onChange={(e) => setCustomDomain(e.target.value)}
-                          placeholder="booking.okonkwo.ng"
-                          className="w-full h-[46px] px-3.5 rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-[13.5px] font-semibold text-[#0F172A] outline-none focus:bg-white focus:border-[#0F3A53] transition-all placeholder:text-[#CBD5E1]"
-                        />
+                    {/* SECTION 3: Visual Branding & Colors */}
+                    <div className="space-y-3">
+                      <div className="text-[11px] font-extrabold tracking-widest text-[#0F3A53] uppercase border-b border-slate-200 pb-1.5 flex items-center gap-1.5">
+                        <Palette className="h-3.5 w-3.5" />
+                        <span>3. Visual Branding &amp; Colors</span>
+                      </div>
+
+                      <div className="space-y-3">
+                        <div className="space-y-1.5">
+                          <label className="text-[12px] font-bold text-[#475569] block">
+                            Practice Logo <span className="text-[#94A3B8] font-normal">(image URL)</span>
+                          </label>
+                          <div className="flex items-center gap-2">
+                            <div className="h-[46px] w-[46px] rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] flex items-center justify-center overflow-hidden shrink-0">
+                              {logoUrl ? (
+                                <img src={logoUrl} alt="Logo" className="w-full h-full object-cover" />
+                              ) : (
+                                <Image className="h-5 w-5 text-[#94A3B8]" />
+                              )}
+                            </div>
+                            <input
+                              type="url"
+                              value={logoUrl}
+                              onChange={(e) => setLogoUrl(e.target.value)}
+                              placeholder="https://example.com/logo.png"
+                              className="flex-1 h-[46px] px-3.5 rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-[13px] font-semibold text-[#0F172A] outline-none focus:bg-white focus:border-[#0F3A53] transition-all placeholder:text-[#CBD5E1]"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="text-[12px] font-bold text-[#475569] flex items-center justify-between">
+                            <span>Brand Color Palette</span>
+                            <span className="text-[10.5px] text-[#64748B] font-normal">Select a preset or custom hex</span>
+                          </label>
+                          <div className="flex flex-wrap gap-2">
+                            {BRAND_PALETTES.map((p) => (
+                              <button
+                                key={p.name}
+                                type="button"
+                                onClick={() => {
+                                  setPrimaryColor(p.primary);
+                                  setSecondaryColor(p.secondary);
+                                }}
+                                className={`h-9 px-3 rounded-[12px] text-xs font-bold flex items-center gap-2 border cursor-pointer transition-all ${
+                                  primaryColor === p.primary && secondaryColor === p.secondary
+                                    ? 'bg-white border-[#0F172A] shadow-xs ring-2 ring-[#0F172A]/20'
+                                    : 'bg-[#F8FAFC] border-[#E2E8F0] hover:bg-slate-100'
+                                }`}
+                              >
+                                <span className="h-3.5 w-3.5 rounded-full flex overflow-hidden border border-black/10 shrink-0">
+                                  <span className="w-1/2 h-full" style={{ backgroundColor: p.primary }} />
+                                  <span className="w-1/2 h-full" style={{ backgroundColor: p.secondary }} />
+                                </span>
+                                <span className="text-[#0F172A]">{p.name}</span>
+                              </button>
+                            ))}
+                          </div>
+                          <div className="flex items-center gap-3 pt-0.5">
+                            <div className="flex items-center gap-2 bg-[#F8FAFC] border border-[#E2E8F0] rounded-[12px] px-3 py-1.5">
+                              <span className="text-[11px] font-bold text-[#475569]">Primary:</span>
+                              <input
+                                type="color"
+                                value={primaryColor}
+                                onChange={(e) => setPrimaryColor(e.target.value)}
+                                className="h-5 w-5 rounded cursor-pointer border-0 bg-transparent"
+                              />
+                              <span className="text-xs font-mono font-bold text-[#0F172A]">{primaryColor}</span>
+                            </div>
+                            <div className="flex items-center gap-2 bg-[#F8FAFC] border border-[#E2E8F0] rounded-[12px] px-3 py-1.5">
+                              <span className="text-[11px] font-bold text-[#475569]">Accent:</span>
+                              <input
+                                type="color"
+                                value={secondaryColor}
+                                onChange={(e) => setSecondaryColor(e.target.value)}
+                                className="h-5 w-5 rounded cursor-pointer border-0 bg-transparent"
+                              />
+                              <span className="text-xs font-mono font-bold text-[#0F172A]">{secondaryColor}</span>
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
 
-                    {/* Contact Info */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="space-y-1.5">
-                        <label className="text-[12px] font-bold text-[#475569] block">Public Support Email</label>
-                        <input
-                          type="email"
-                          value={publicEmail}
-                          onChange={(e) => setPublicEmail(e.target.value)}
-                          placeholder="hello@okonkwo.ng"
-                          className="w-full h-[46px] px-3.5 rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-[13.5px] font-semibold text-[#0F172A] outline-none focus:bg-white focus:border-[#0F3A53] transition-all placeholder:text-[#CBD5E1]"
-                        />
+                    {/* SECTION 4: Contact & About Bio */}
+                    <div className="space-y-3">
+                      <div className="text-[11px] font-extrabold tracking-widest text-[#0F3A53] uppercase border-b border-slate-200 pb-1.5 flex items-center gap-1.5">
+                        <Mail className="h-3.5 w-3.5" />
+                        <span>4. Public Contact &amp; Bio</span>
                       </div>
-                      <div className="space-y-1.5">
-                        <label className="text-[12px] font-bold text-[#475569] block">Public Contact Phone</label>
-                        <input
-                          type="tel"
-                          value={publicPhone}
-                          onChange={(e) => setPublicPhone(e.target.value)}
-                          placeholder="+234 803 123 4567"
-                          className="w-full h-[46px] px-3.5 rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-[13.5px] font-semibold text-[#0F172A] outline-none focus:bg-white focus:border-[#0F3A53] transition-all placeholder:text-[#CBD5E1]"
-                        />
-                      </div>
-                    </div>
 
-                    {/* About Practice Textarea */}
-                    <div className="space-y-1.5">
-                      <label className="text-[12px] font-bold text-[#475569] block">
-                        About Practice / Welcome Bio <span className="text-[#94A3B8] font-normal">(optional)</span>
-                      </label>
-                      <textarea
-                        rows={3}
-                        value={welcomeMessage}
-                        onChange={(e) => setWelcomeMessage(e.target.value)}
-                        placeholder="e.g. Evidence-based individual & couples psychotherapy in Lagos. We help clients navigate stress, burnout, and relationship dynamics."
-                        className="w-full p-3.5 rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-[13.5px] font-semibold text-[#0F172A] outline-none focus:bg-white focus:border-[#0F3A53] transition-all placeholder:text-[#CBD5E1] resize-none leading-relaxed"
-                      />
+                      <div className="space-y-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div className="space-y-1.5">
+                            <label className="text-[12px] font-bold text-[#475569] block">Public Support Email</label>
+                            <input
+                              type="email"
+                              value={publicEmail}
+                              onChange={(e) => setPublicEmail(e.target.value)}
+                              placeholder="hello@okonkwo.ng"
+                              className="w-full h-[46px] px-3.5 rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-[13.5px] font-semibold text-[#0F172A] outline-none focus:bg-white focus:border-[#0F3A53] transition-all placeholder:text-[#CBD5E1]"
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <label className="text-[12px] font-bold text-[#475569] block">Public Contact Phone</label>
+                            <input
+                              type="tel"
+                              value={publicPhone}
+                              onChange={(e) => setPublicPhone(e.target.value)}
+                              placeholder="+234 803 123 4567"
+                              className="w-full h-[46px] px-3.5 rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-[13.5px] font-semibold text-[#0F172A] outline-none focus:bg-white focus:border-[#0F3A53] transition-all placeholder:text-[#CBD5E1]"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <label className="text-[12px] font-bold text-[#475569] block">
+                            About Practice / Welcome Bio <span className="text-[#94A3B8] font-normal">(optional)</span>
+                          </label>
+                          <textarea
+                            rows={3}
+                            value={welcomeMessage}
+                            onChange={(e) => setWelcomeMessage(e.target.value)}
+                            placeholder="e.g. Evidence-based individual & couples psychotherapy in Lagos. We help clients navigate stress, burnout, and relationship dynamics."
+                            className="w-full p-3.5 rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-[13.5px] font-semibold text-[#0F172A] outline-none focus:bg-white focus:border-[#0F3A53] transition-all placeholder:text-[#CBD5E1] resize-none leading-relaxed"
+                          />
+                        </div>
+                      </div>
                     </div>
                   </div>
 
                   {error && (
-                    <p className="text-xs font-semibold text-red-600 bg-red-50 border border-red-200 rounded-[14px] px-4 py-3">
+                    <p className="text-xs font-semibold text-red-600 bg-red-50 border border-red-200 rounded-[14px] px-4 py-3 mt-4">
                       {error}
                     </p>
                   )}
@@ -587,7 +646,7 @@ export function OnboardingWizardPage() {
 
                   <div className="text-[11px] text-[#64748B] font-medium flex items-center gap-1.5 px-1">
                     <Globe className="h-3.5 w-3.5 text-[#94A3B8]" />
-                    <span className="truncate">https://{slug || 'handle'}.os.unclutter.com.ng</span>
+                    <span className="truncate">{bookingUrl}</span>
                   </div>
                 </div>
               </div>
