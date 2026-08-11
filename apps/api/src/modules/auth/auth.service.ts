@@ -330,6 +330,11 @@ export class AuthService {
     if (!user) return generic;
 
     const token = await this.createPasswordResetToken(user.id);
+    const profile = await this.prisma.profile.findFirst({
+      where: { userId: user.id },
+      orderBy: { createdAt: 'desc' },
+    });
+
     const baseUrl = (process.env.APP_BASE_URL || 'https://os.unclutter.com.ng').replace(/\/+$/, '');
     const resetLink = `${baseUrl}/reset-password/${token}`;
 
@@ -341,6 +346,8 @@ export class AuthService {
         message: `We received a request to reset the password for your UnclutterOS account. Click the button below to choose a new one. This link expires in 1 hour.`,
         link: resetLink,
         actionLabel: 'Reset password',
+        tenantId: profile?.tenantId ?? null,
+        profileId: profile?.id ?? null,
       });
     } catch (err) {
       this.logger.warn(`Failed to send password reset email to ${email}: ${(err as Error).message}`);
