@@ -21,6 +21,18 @@ const BCRYPT_ROUNDS = 12;
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
 
+  private authDebug(event: string, details: Record<string, unknown>) {
+    this.logger.log(`[AUTH_DEBUG] ${event} ${JSON.stringify(details)}`);
+  }
+
+  private unauthorized(message: string, code: string): never {
+    throw new UnauthorizedException({ message, code });
+  }
+
+  private forbidden(message: string, code: string): never {
+    throw new ForbiddenException({ message, code });
+  }
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
@@ -44,13 +56,14 @@ export class AuthService {
     // OLD password (the User row is reused) and create a fresh profile that
     // can never log in with the password just chosen — surfacing as confusing
     // "Invalid email or password" on the login screen.
-    if (!tenantId) {
-      const existingUser = await this.prisma.user.findUnique({ where: { email } });
-      if (existingUser) {
-        throw new ConflictException(
-          'An account with this email already exists. Please log in or reset your password.',
-        );
-      }
+    const existingUser = await this.prisma.user.findUnique({ where: { email } });
+    if (existingUser) {
+      this.logger.warn(
+        `Registration blocked for ${email}: existing user ${existingUser.id.toString()} already has a password hash`,
+      );
+      throw new ConflictException(
+        'An account with this email already exists. Please log in or reset your password.',
+      );
     }
 
     // Password policy: min 8 chars with upper, lower, digit and a special char.
@@ -91,17 +104,13 @@ export class AuthService {
     }
     const hashedPassword = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
 
-    // Create or find underlying User
-    let user = await this.prisma.user.findUnique({ where: { email } });
-    if (!user) {
-      user = await this.prisma.user.create({
-        data: {
-          email,
-          username,
-          password: hashedPassword,
-        },
-      });
-    }
+    const user = await this.prisma.user.create({
+      data: {
+        email,
+        username,
+        password: hashedPassword,
+      },
+    });
 
     const isTherapist = dto.type === 'therapist' || dto.alsoTherapist === true;
     const isOwner = !tenantId;
@@ -144,8 +153,20 @@ export class AuthService {
           acceptsGeneralBooking: true,
           isVerified: true,
         },
-      });
+        });
     }
+
+    this.authDebug('register', {
+      email,
+      tenantId: targetTenantId?.toString() ?? null,
+      userId: user.id.toString(),
+      profileId: profile.id.toString(),
+      profileStatus: profile.status,
+      emailVerified: profile.emailVerified,
+      passwordLength: dto.password?.length ?? 0,
+      passwordHashPrefix: hashedPassword.slice(0, 7),
+      passwordHashLength: hashedPassword.length,
+    });
 
     // New accounts must verify their email before they can sign in. If a
     // profile already existed and was verified, skip re-verification.
@@ -269,6 +290,26 @@ export class AuthService {
         emailVerifiedAt: new Date(),
         status: 'active',
       },
+    });
+
+    const updatedProfiles = await this.prisma.profile.findMany({
+      where: { userId: user.id },
+      select: { id: true, tenantId: true, status: true, emailVerified: true, emailVerifiedAt: true },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    this.authDebug('verify_email', {
+      email,
+      userId: user.id.toString(),
+      tokenId: token.id,
+      matchedProfileId: profile.id.toString(),
+      profiles: updatedProfiles.map((item) => ({
+        id: item.id.toString(),
+        tenantId: item.tenantId.toString(),
+        status: item.status,
+        emailVerified: item.emailVerified,
+        emailVerifiedAt: item.emailVerifiedAt?.toISOString() ?? null,
+      })),
     });
 
     await this.prisma.token.deleteMany({ where: { userId: user.id, type: 'email_verification' } });
@@ -421,6 +462,16 @@ export class AuthService {
       where: { id: reset.userId },
       data: { password: hashedPassword },
     });
+
+    this.authDebug('reset_password', {
+      userId: reset.userId.toString(),
+      email: reset.user.email,
+      tokenId: reset.id,
+      passwordLength: password.length,
+      passwordHashPrefix: hashedPassword.slice(0, 7),
+      passwordHashLength: hashedPassword.length,
+    });
+
     await this.prisma.token.deleteMany({ where: { userId: reset.userId, type: 'password_reset' } });
 
     return { message: 'Password updated. You can now log in.', success: true };
@@ -453,12 +504,26 @@ export class AuthService {
 
     const user = await this.prisma.user.findUnique({ where: { email } });
     if (!user) {
-      throw new UnauthorizedException('Invalid email or password');
+      this.logger.warn(`Login failed for ${email}: no user record found`);
+      this.unauthorized('Invalid email or password', 'AUTH_INVALID_CREDENTIALS');
     }
 
     const passwordValid = await bcrypt.compare(dto.password, user.password);
+    this.authDebug('login_attempt', {
+      email,
+      tenantId: tenantId?.toString() ?? null,
+      userFound: true,
+      userId: user.id.toString(),
+      inputPasswordLength: dto.password?.length ?? 0,
+      storedPasswordHashPrefix: user.password.slice(0, 7),
+      storedPasswordHashLength: user.password.length,
+      passwordValid,
+    });
     if (!passwordValid) {
-      throw new UnauthorizedException('Invalid email or password');
+      this.logger.warn(
+        `Login failed for ${email}: password mismatch for user ${user.id.toString()} (hash length ${user.password.length})`,
+      );
+      this.unauthorized('Invalid email or password', 'AUTH_INVALID_CREDENTIALS');
     }
 
     const candidateProfiles = await this.prisma.profile.findMany({
@@ -466,15 +531,35 @@ export class AuthService {
       orderBy: [{ emailVerified: 'desc' }, { createdAt: 'desc' }],
     });
 
+    this.authDebug('login_profiles', {
+      email,
+      userId: user.id.toString(),
+      tenantId: tenantId?.toString() ?? null,
+      profiles: candidateProfiles.map((item) => ({
+        id: item.id.toString(),
+        tenantId: item.tenantId.toString(),
+        status: item.status,
+        type: item.type,
+        role: item.role,
+        emailVerified: item.emailVerified,
+        createdAt: item.createdAt.toISOString(),
+      })),
+    });
+
     const profile = candidateProfiles[0] ?? null;
     const latestUnverifiedProfile = candidateProfiles.find((item) => item.emailVerified !== true) ?? null;
 
     if (!profile) {
-      throw new UnauthorizedException('Invalid email or password');
+      this.logger.warn(`Login failed for ${email}: no profile linked to user ${user.id.toString()}`);
+      this.unauthorized('No practice profile is linked to this account yet.', 'AUTH_PROFILE_MISSING');
     }
 
     if (profile.status === 'inactive' && !latestUnverifiedProfile) {
-      throw new UnauthorizedException('Your account has been deactivated. Please contact your administrator.');
+      this.logger.warn(`Login blocked for ${email}: profile ${profile.id.toString()} is inactive`);
+      this.unauthorized(
+        'Your account has been deactivated. Please contact your administrator.',
+        'AUTH_PROFILE_INACTIVE',
+      );
     }
 
     if (latestUnverifiedProfile) {
@@ -485,10 +570,14 @@ export class AuthService {
       const canResendVerification =
         !latestVerification || latestVerification.expiresAt < new Date();
 
-      throw new ForbiddenException(
+      this.logger.warn(
+        `Login blocked for ${email}: user ${user.id.toString()} still has unverified profile ${latestUnverifiedProfile.id.toString()}`,
+      );
+      this.forbidden(
         canResendVerification
           ? 'Please verify your email address before logging in. Your previous verification code may have expired, so request a new one from the verify email screen.'
           : 'Please verify your email address before logging in. Check your inbox for the verification code.',
+        'AUTH_EMAIL_VERIFICATION_REQUIRED',
       );
     }
 
@@ -498,6 +587,17 @@ export class AuthService {
       profile.tenantId,
       profile.type,
     );
+
+    this.authDebug('login_success', {
+      email,
+      userId: user.id.toString(),
+      profileId: profile.id.toString(),
+      tenantId: profile.tenantId.toString(),
+      profileStatus: profile.status,
+      emailVerified: profile.emailVerified,
+      accessTokenIssued: !!accessToken,
+      refreshTokenIssued: !!refreshToken,
+    });
 
     return {
       accessToken,
