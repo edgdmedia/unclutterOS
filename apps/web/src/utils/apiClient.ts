@@ -32,7 +32,11 @@ const DEFAULT_APP_BASE = import.meta.env.DEV && typeof window !== 'undefined' ? 
 export const APP_BASE_URL = import.meta.env.VITE_APP_URL || DEFAULT_APP_BASE;
 
 export function getBookingUrl(slug: string): string {
-  return `${APP_BASE_URL}/booking/${slug}`;
+  if (!slug) return 'https://os.unclutter.com.ng';
+  if (import.meta.env.DEV && typeof window !== 'undefined') {
+    return `${window.location.origin}/booking/${slug}`;
+  }
+  return `https://${slug}.os.unclutter.com.ng`;
 }
 
 const CSRF_COOKIE = 'unclutter_csrf';

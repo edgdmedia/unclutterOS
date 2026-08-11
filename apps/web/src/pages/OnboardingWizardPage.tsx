@@ -1,7 +1,8 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Check, Copy, ArrowRight, ArrowLeft, Loader2, Sparkles, Building2, Calendar, ShieldCheck, ExternalLink } from 'lucide-react';
 import { UnclutterLockup } from '@unclutteros/ui';
+import { useAuth } from '../context/AuthContext';
 import { api, getBookingUrl } from '../utils/apiClient';
 
 type SignupState = {
@@ -38,6 +39,7 @@ function nairaToKobo(value: string) {
 export function OnboardingWizardPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { profile: authUser } = useAuth();
   const signupState = (location.state || {}) as SignupState;
 
   const persona = signupState.persona || 'therapist';
@@ -62,12 +64,15 @@ export function OnboardingWizardPage() {
   const [stepIndex, setStepIndex] = useState(0);
   const stepKey = steps[stepIndex].key;
 
-  const [practiceName, setPracticeName] = useState(signupState.practiceName || '');
-  const [slug, setSlug] = useState(slugify(signupState.practiceName || '') || 'my-practice');
+  const initialPracticeName = signupState.practiceName || authUser?.practiceName || '';
+  const initialSlug = slugify(initialPracticeName || authUser?.tenantSlug || '') || '';
+
+  const [practiceName, setPracticeName] = useState(initialPracticeName);
+  const [slug, setSlug] = useState(initialSlug);
   const [daysOn, setDaysOn] = useState<boolean[]>([true, true, true, true, true, false, false]);
   const [rate, setRate] = useState('35,000');
   const [cancellationHours, setCancellationHours] = useState(24);
-  const [publicEmail, setPublicEmail] = useState(signupState.email || '');
+  const [publicEmail, setPublicEmail] = useState(signupState.email || authUser?.email || '');
   const [publicPhone, setPublicPhone] = useState('');
   const [city, setCity] = useState('');
   const [address, setAddress] = useState('');
@@ -80,6 +85,39 @@ export function OnboardingWizardPage() {
   const primaryColor = '#0F3A53';
   const secondaryColor = '#E3B341';
   const bookingUrl = useMemo(() => getBookingUrl(slug), [slug]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadExistingBrand() {
+      try {
+        const brand = await api.get<{
+          name?: string;
+          slug?: string;
+          publicEmail?: string;
+          publicPhone?: string;
+          city?: string;
+          address?: string;
+          category?: string;
+          cancellationHours?: number;
+        }>('/v1/tenant/brand');
+        if (cancelled) return;
+        if (brand.name) setPracticeName(brand.name);
+        if (brand.slug) setSlug(brand.slug);
+        if (brand.publicEmail) setPublicEmail(brand.publicEmail);
+        if (brand.publicPhone) setPublicPhone(brand.publicPhone);
+        if (brand.city) setCity(brand.city);
+        if (brand.address) setAddress(brand.address);
+        if (brand.category) setCategory(brand.category);
+        if (brand.cancellationHours) setCancellationHours(brand.cancellationHours);
+      } catch {
+        // Ignore errors; fallback to initial state
+      }
+    }
+    void loadExistingBrand();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(bookingUrl);
@@ -264,8 +302,8 @@ export function OnboardingWizardPage() {
 
                     <div className="space-y-1.5">
                       <label className="text-[12px] font-bold text-[#475569] block">Booking Link Handle</label>
-                      <div className="h-[50px] bg-[#F8FAFC] border border-[#E2E8F0] rounded-[14px] px-3.5 flex items-center gap-2 focus-within:bg-white focus-within:border-[#0F3A53] transition-all">
-                        <span className="text-xs font-semibold text-[#64748B] shrink-0">os.unclutter.com.ng/booking/</span>
+                      <div className="h-[50px] bg-[#F8FAFC] border border-[#E2E8F0] rounded-[14px] px-3.5 flex items-center gap-1.5 focus-within:bg-white focus-within:border-[#0F3A53] transition-all">
+                        <span className="text-xs font-semibold text-[#64748B] shrink-0">https://</span>
                         <input
                           type="text"
                           value={slug}
@@ -273,6 +311,7 @@ export function OnboardingWizardPage() {
                           placeholder="okonkwo-therapy"
                           className="flex-1 bg-transparent text-xs font-bold text-[#0F172A] outline-none placeholder:text-[#CBD5E1]"
                         />
+                        <span className="text-xs font-semibold text-[#64748B] shrink-0">.os.unclutter.com.ng</span>
                         <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200 shrink-0">
                           AVAILABLE
                         </span>
@@ -297,7 +336,7 @@ export function OnboardingWizardPage() {
                     </div>
                     <div>
                       <h4 className="text-base font-extrabold tracking-tight">{practiceName || 'Okonkwo Therapy Practice'}</h4>
-                      <p className="text-[11px] text-white/80 font-medium">os.unclutter.com.ng/booking/{slug || 'handle'}</p>
+                      <p className="text-[11px] text-white/80 font-medium">https://{slug || 'handle'}.os.unclutter.com.ng</p>
                     </div>
                   </div>
                   <div className="space-y-2">
