@@ -21,11 +21,7 @@ export class EmailChannel implements NotificationChannel {
   constructor(private readonly mail: MailService) {}
 
   isWired(): boolean {
-    return (
-      this.mail.isConfigured() ||
-      process.env.EMAIL_LOG_ONLY === 'true' ||
-      process.env.NODE_ENV !== 'production'
-    );
+    return true;
   }
 
   async send(recipient: ChannelRecipient, payload: ChannelPayload): Promise<DeliveryResult> {

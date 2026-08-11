@@ -12,6 +12,11 @@ import { AppModule } from './app.module';
 config({ path: path.resolve(__dirname, '../../..', '.env'), quiet: true });
 config({ path: path.resolve(process.cwd(), '.env'), quiet: true });
 
+// Global BigInt JSON serialization fallback (prevents "Do not know how to serialize a BigInt" error)
+(BigInt.prototype as any).toJSON = function () {
+  return this.toString();
+};
+
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
