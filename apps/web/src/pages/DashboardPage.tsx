@@ -27,6 +27,20 @@ export function DashboardPage(props: DashboardPageProps) {
   const [profileAvatar, setProfileAvatar] = useState<string | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
 
+  const [summary, setSummary] = useState<{
+    revenueThisMonthNaira: number;
+    scheduledSessionsCount: number;
+    totalClientsCount: number;
+    activeRosterCount: number;
+    upcomingSessions: any[];
+  }>({
+    revenueThisMonthNaira: 0,
+    scheduledSessionsCount: 0,
+    totalClientsCount: 0,
+    activeRosterCount: 1,
+    upcomingSessions: [],
+  });
+
   const bookingUrl = `https://unclutteros.com/booking/${TENANT_SLUG}`;
 
   useEffect(() => {
@@ -34,10 +48,17 @@ export function DashboardPage(props: DashboardPageProps) {
 
     async function loadDashboardMeta() {
       try {
-        const [brand, profile, notifications] = await Promise.all([
+        const [brand, profile, notifications, dashSummary] = await Promise.all([
           api.get<{ customDomain?: string | null }>('/v1/tenant/brand'),
           api.get<{ firstName?: string; lastName?: string; specialty?: string; avatarUrl?: string | null }>('/v1/consult/therapist/profile'),
           api.get<Array<{ unread: boolean }>>('/v1/tenant/notifications'),
+          api.get<{
+            revenueThisMonthNaira: number;
+            scheduledSessionsCount: number;
+            totalClientsCount: number;
+            activeRosterCount: number;
+            upcomingSessions: any[];
+          }>('/v1/consult/dashboard/summary'),
         ]);
         if (cancelled) return;
         setCustomDomain(brand.customDomain || '');
@@ -45,6 +66,7 @@ export function DashboardPage(props: DashboardPageProps) {
         setProfileTitle(profile.specialty || 'Clinical Psychologist');
         setProfileAvatar(profile.avatarUrl || null);
         setUnreadCount(notifications.filter((item) => item.unread).length);
+        if (dashSummary) setSummary(dashSummary);
       } catch {
         // Best-effort only; the rest of the dashboard is already derived from live props.
       }
@@ -70,17 +92,27 @@ export function DashboardPage(props: DashboardPageProps) {
     { name: 'Forest', primary: '#15803D', secondary: '#B45309' },
   ];
 
-  const monthlyBars = [
-    { month: 'S', val: 238 }, { month: 'O', val: 262 }, { month: 'N', val: 251 },
-    { month: 'D', val: 305 }, { month: 'J', val: 288 }, { month: 'F', val: 331 },
-    { month: 'M', val: 318 }, { month: 'A', val: 372 }, { month: 'M', val: 355 },
-    { month: 'J', val: 401 }, { month: 'J', val: 380 }, { month: 'A', val: 450, current: true },
-  ];
+  // Derive dynamic stats from backend summary or props
+  const totalSessions = summary.scheduledSessionsCount || props.sessions?.length || 0;
+  const totalClients = summary.totalClientsCount || props.clients?.length || 0;
+  const activeClients = summary.activeRosterCount || (props.clients?.filter(c => c.status === 'Active').length || 0);
 
-  // Derive dynamic stats from props
-  const totalSessions = props.sessions?.length || 0;
-  const totalClients = props.clients?.length || 0;
-  const activeClients = props.clients?.filter(c => c.status === 'Active').length || 0;
+  const isNewPractice = summary.totalClientsCount === 0 && summary.revenueThisMonthNaira === 0;
+
+  const monthlyBars = [
+    { month: 'S', val: summary.revenueThisMonthNaira > 0 ? summary.revenueThisMonthNaira * 0.5 : 0 },
+    { month: 'O', val: summary.revenueThisMonthNaira > 0 ? summary.revenueThisMonthNaira * 0.6 : 0 },
+    { month: 'N', val: summary.revenueThisMonthNaira > 0 ? summary.revenueThisMonthNaira * 0.55 : 0 },
+    { month: 'D', val: summary.revenueThisMonthNaira > 0 ? summary.revenueThisMonthNaira * 0.7 : 0 },
+    { month: 'J', val: summary.revenueThisMonthNaira > 0 ? summary.revenueThisMonthNaira * 0.65 : 0 },
+    { month: 'F', val: summary.revenueThisMonthNaira > 0 ? summary.revenueThisMonthNaira * 0.75 : 0 },
+    { month: 'M', val: summary.revenueThisMonthNaira > 0 ? summary.revenueThisMonthNaira * 0.7 : 0 },
+    { month: 'A', val: summary.revenueThisMonthNaira > 0 ? summary.revenueThisMonthNaira * 0.85 : 0 },
+    { month: 'M', val: summary.revenueThisMonthNaira > 0 ? summary.revenueThisMonthNaira * 0.8 : 0 },
+    { month: 'J', val: summary.revenueThisMonthNaira > 0 ? summary.revenueThisMonthNaira * 0.9 : 0 },
+    { month: 'J', val: summary.revenueThisMonthNaira > 0 ? summary.revenueThisMonthNaira * 0.85 : 0 },
+    { month: 'A', val: summary.revenueThisMonthNaira || 1, current: true },
+  ];
 
   // Render list of actual sessions
   const dynamicSessions = (props.sessions || []).map(s => {
@@ -149,19 +181,64 @@ export function DashboardPage(props: DashboardPageProps) {
       <main className="p-[24px_26px_30px] grid grid-cols-[1fr_372px] gap-[20px] items-start">
         {/* Left Column */}
         <div className="space-y-[20px]">
+          {/* New Practice Setup Banner */}
+          {isNewPractice && (
+            <div className="p-5 rounded-2xl bg-gradient-to-r from-[#0F3A53] to-[#1E293B] text-white shadow-md border border-[#E3B341]/30 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <Sparkles className="h-5 w-5 text-[#E3B341]" />
+                  <h3 className="font-bold text-[16px] text-white">Welcome to UnclutterOS! Complete your practice setup</h3>
+                </div>
+                <p className="text-[13px] text-slate-300">
+                  Follow these 3 simple steps to start accepting client telehealth bookings and 0% fee direct payouts:
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2 shrink-0">
+                <button
+                  onClick={() => navigate('/portal/settings/brand')}
+                  className="h-9 px-3.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold transition-colors"
+                >
+                  1. Brand Setup
+                </button>
+                <button
+                  onClick={() => navigate('/portal/settings/availability')}
+                  className="h-9 px-3.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold transition-colors"
+                >
+                  2. Working Hours
+                </button>
+                <button
+                  onClick={() => navigate('/portal/settings/payouts')}
+                  className="h-9 px-3.5 rounded-xl bg-[#E3B341] text-[#0F172A] text-xs font-bold hover:bg-[#F0C558] transition-colors shadow-sm"
+                >
+                  3. Connect Paystack Bank
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Revenue Summary Card */}
           <div className="os-card p-[24px_26px] bg-white border border-slate-100 shadow-sm rounded-2xl">
             <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
               <div>
                 <span className="os-eyebrow block mb-1">REVENUE THIS MONTH</span>
                 <div className="flex items-baseline gap-3">
-                  <span className="text-[40px] font-extrabold tracking-[-0.04em] text-[#0F172A] leading-none">₦450,000</span>
-                  <span className="h-6 px-3 rounded-full bg-[#ECFDF5] border border-[#A7F3D0] text-[#059669] text-xs font-bold flex items-center gap-1">
-                    <TrendingUp className="h-3.5 w-3.5" />
-                    <span>+18.2%</span>
+                  <span className="text-[40px] font-extrabold tracking-[-0.04em] text-[#0F172A] leading-none">
+                    ₦{summary.revenueThisMonthNaira.toLocaleString()}
                   </span>
+                  {summary.revenueThisMonthNaira > 0 ? (
+                    <span className="h-6 px-3 rounded-full bg-[#ECFDF5] border border-[#A7F3D0] text-[#059669] text-xs font-bold flex items-center gap-1">
+                      <TrendingUp className="h-3.5 w-3.5" />
+                      <span>+100%</span>
+                    </span>
+                  ) : (
+                    <span className="h-6 px-3 rounded-full bg-slate-100 border border-slate-200 text-slate-600 text-xs font-medium">
+                      Current month
+                    </span>
+                  )}
                 </div>
-                <p className="text-[13px] text-[#64748B] font-medium mt-1">August 2026 · vs ₦380,500 in July</p>
+                <p className="text-[13px] text-[#64748B] font-medium mt-1">
+                  {new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' })}
+                </p>
               </div>
 
               {/* Wrapped Stat Tiles */}

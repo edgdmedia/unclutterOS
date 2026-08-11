@@ -3,7 +3,7 @@ import { PrismaService } from '../../common/prisma/prisma.service';
 
 @Injectable()
 export class ConsultService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   async getPublicTherapists(tenantId: bigint) {
     const practitioners = await this.prisma.consultTherapistProfile.findMany({
@@ -315,7 +315,7 @@ export class ConsultService {
         const windowEnd = new Date(cursor);
         windowEnd.setHours(endHour, endMinute, 0, 0);
 
-        for (let slotStart = new Date(windowStart); slotStart < windowEnd; ) {
+        for (let slotStart = new Date(windowStart); slotStart < windowEnd;) {
           const slotEnd = new Date(slotStart.getTime() + dto.sessionLengthMinutes * 60_000);
           if (slotEnd > windowEnd) break;
           if (slotEnd > now) {
@@ -631,14 +631,14 @@ export class ConsultService {
       },
       latestNote: latestNote
         ? {
-            id: latestNote.id.toString(),
-            subjective: latestNote.subjective,
-            objective: latestNote.objective,
-            assessment: latestNote.assessment,
-            plan: latestNote.plan,
-            isLocked: latestNote.isLocked,
-            createdAt: latestNote.createdAt.toISOString(),
-          }
+          id: latestNote.id.toString(),
+          subjective: latestNote.subjective,
+          objective: latestNote.objective,
+          assessment: latestNote.assessment,
+          plan: latestNote.plan,
+          isLocked: latestNote.isLocked,
+          createdAt: latestNote.createdAt.toISOString(),
+        }
         : null,
       submissions: submissions.map((submission) => ({
         id: submission.id.toString(),
@@ -650,10 +650,10 @@ export class ConsultService {
       })),
       nextBooking: nextBooking
         ? {
-            clientName: `${nextBooking.client.firstName || ''} ${nextBooking.client.lastName || ''}`.trim() || nextBooking.client.email,
-            startsAt: nextBooking.availability.startsAt.toISOString(),
-            endsAt: nextBooking.availability.endsAt.toISOString(),
-          }
+          clientName: `${nextBooking.client.firstName || ''} ${nextBooking.client.lastName || ''}`.trim() || nextBooking.client.email,
+          startsAt: nextBooking.availability.startsAt.toISOString(),
+          endsAt: nextBooking.availability.endsAt.toISOString(),
+        }
         : null,
     };
   }
@@ -694,6 +694,56 @@ export class ConsultService {
     return {
       roomName: defaultRoomName,
       roomLink: `https://meet.jit.si/${defaultRoomName}`,
+    };
+  }
+
+  async getDashboardSummary(tenantId: bigint) {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const [bookingsThisMonth, upcomingBookings, totalClientsCount, activeRosterCount] = await Promise.all([
+      this.prisma.consultBooking.findMany({
+        where: {
+          tenantId,
+          status: { in: ['CONFIRMED', 'COMPLETED'] },
+          createdAt: { gte: startOfMonth },
+        },
+        include: { service: true },
+      }),
+      this.prisma.consultBooking.findMany({
+        where: {
+          tenantId,
+          status: 'CONFIRMED',
+          availability: { startsAt: { gte: now } },
+        },
+        include: { client: true, service: true, availability: true },
+        orderBy: { availability: { startsAt: 'asc' } },
+        take: 10,
+      }),
+      this.prisma.profile.count({
+        where: { tenantId, role: 'CLIENT' },
+      }),
+      this.prisma.profile.count({
+        where: { tenantId, type: 'therapist', status: 'active' },
+      }),
+    ]);
+
+    const revenueThisMonthKobo = bookingsThisMonth.reduce((acc, b) => acc + (b.service?.priceKobo ? Number(b.service.priceKobo) : 0), 0);
+    const revenueThisMonthNaira = revenueThisMonthKobo / 100;
+
+    return {
+      revenueThisMonthNaira,
+      scheduledSessionsCount: upcomingBookings.length,
+      totalClientsCount,
+      activeRosterCount: activeRosterCount || 1,
+      upcomingSessions: upcomingBookings.map((b) => ({
+        id: b.id.toString(),
+        clientName: `${b.client.firstName || ''} ${b.client.lastName || ''}`.trim() || b.client.email,
+        serviceTitle: b.service.title,
+        startsAt: b.availability.startsAt.toISOString(),
+        endsAt: b.availability.endsAt.toISOString(),
+        status: b.status,
+      })),
     };
   }
 }

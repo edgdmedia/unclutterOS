@@ -28,6 +28,14 @@ export class ConsultController {
     );
   }
 
+  @Get('dashboard/summary')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Get real-time practice dashboard metrics and upcoming sessions' })
+  getDashboardSummary(@Req() req: any) {
+    return this.consultService.getDashboardSummary(authenticatedTenantId(req));
+  }
+
   @Post('therapist/profile')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('access-token')
