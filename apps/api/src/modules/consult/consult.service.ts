@@ -736,7 +736,7 @@ export class ConsultService {
     const hasAvailability = availabilityCount > 0;
     const hasService = serviceCount > 0;
     const hasPayout = payoutCount > 0;
-    const onboardingCompleted = hasAvailability && hasService;
+    const onboardingCompleted = hasAvailability && hasService && hasPayout;
 
     return {
       revenueThisMonthNaira,

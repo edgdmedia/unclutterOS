@@ -46,7 +46,9 @@ export function DashboardPage(props: DashboardPageProps) {
     upcomingSessions: [],
   });
 
-  const bookingUrl = `https://unclutteros.com/booking/${TENANT_SLUG}`;
+  const bookingUrl = customDomain
+    ? (customDomain.startsWith('http') ? customDomain : `https://${customDomain}`)
+    : `https://${TENANT_SLUG}.os.unclutter.com.ng`;
 
   useEffect(() => {
     let cancelled = false;
@@ -198,9 +200,20 @@ export function DashboardPage(props: DashboardPageProps) {
                   <Sparkles className="h-5 w-5 text-[#E3B341]" />
                   <h3 className="font-bold text-[16px] text-white">Complete your practice onboarding setup</h3>
                 </div>
-                <p className="text-[13px] text-slate-300">
-                  Run the 3-step setup wizard to set your brand, session rates, working hours, and 0% fee direct payouts:
+                <p className="text-[13px] text-slate-300 mb-2">
+                  Follow these 3 steps to start accepting client telehealth bookings and 0% fee direct bank payouts:
                 </p>
+                <div className="flex flex-wrap items-center gap-3 text-xs">
+                  <span className={`inline-flex items-center gap-1 font-medium ${summary.hasService ? 'text-emerald-400' : 'text-amber-300'}`}>
+                    {summary.hasService ? <CheckCircle2 className="h-3.5 w-3.5" /> : '•'} 1. Services & Pricing
+                  </span>
+                  <span className={`inline-flex items-center gap-1 font-medium ${summary.hasAvailability ? 'text-emerald-400' : 'text-amber-300'}`}>
+                    {summary.hasAvailability ? <CheckCircle2 className="h-3.5 w-3.5" /> : '•'} 2. Working Hours
+                  </span>
+                  <span className={`inline-flex items-center gap-1 font-medium ${summary.hasPayout ? 'text-emerald-400' : 'text-amber-300'}`}>
+                    {summary.hasPayout ? <CheckCircle2 className="h-3.5 w-3.5" /> : '•'} 3. Bank Payout Account
+                  </span>
+                </div>
               </div>
               <div className="flex flex-wrap items-center gap-2 shrink-0">
                 <button
@@ -212,9 +225,9 @@ export function DashboardPage(props: DashboardPageProps) {
                 </button>
                 <button
                   onClick={() => navigate('/portal/settings/payouts')}
-                  className="h-9 px-3 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold transition-colors"
+                  className="h-9 px-3.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold transition-colors"
                 >
-                  Payouts
+                  Bank Payouts
                 </button>
               </div>
             </div>
