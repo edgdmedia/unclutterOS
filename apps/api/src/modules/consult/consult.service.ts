@@ -1,9 +1,23 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, Logger } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { NotificationService } from '../notifications/notification.service';
+import { DiscountService } from '../discount/discount.service';
+import { BillingService } from '../billing/billing.service';
+import { PaystackService } from '../billing/paystack.service';
+import { CalendarService } from '../calendar/calendar.service';
 
 @Injectable()
 export class ConsultService {
-  constructor(private readonly prisma: PrismaService) { }
+  private readonly logger = new Logger(ConsultService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notifications: NotificationService,
+    private readonly discountService: DiscountService,
+    private readonly billing: BillingService,
+    private readonly paystack: PaystackService,
+    private readonly calendar: CalendarService,
+  ) { }
 
   async getPublicTherapists(tenantId: bigint) {
     const practitioners = await this.prisma.consultTherapistProfile.findMany({
@@ -356,6 +370,7 @@ export class ConsultService {
     email: string;
     phone?: string;
     notes?: string;
+    discountCode?: string;
   }) {
     const serviceId = BigInt(dto.serviceId);
     const availabilityId = BigInt(dto.availabilityId);
@@ -369,11 +384,32 @@ export class ConsultService {
           include: { profile: true },
         },
         service: true,
+        tenant: true,
       },
     });
 
     if (!slot) {
       throw new BadRequestException('The selected time slot is no longer available');
+    }
+    
+    // Validate discount code if provided
+    let discountResult = null;
+    if (dto.discountCode && slot.service) {
+      discountResult = await this.discountService.validateDiscount(tenantId, dto.discountCode, slot.service.priceKobo);
+    }
+
+    const tier = (slot.tenant.subscriptionTier || 'STARTER').toUpperCase();
+    if (tier === 'STARTER') {
+      const monthStart = new Date();
+      monthStart.setDate(1);
+      monthStart.setHours(0, 0, 0, 0);
+
+      const count = await this.prisma.consultBooking.count({
+        where: { tenantId, createdAt: { gte: monthStart }, status: { not: 'CANCELLED' } },
+      });
+      if (count >= 20) {
+        throw new BadRequestException('Monthly booking limit reached. Upgrade to Pro to accept unlimited bookings.');
+      }
     }
 
     // Atomic transaction: Find or create client profile, create booking, and deactivate availability slot
@@ -409,7 +445,7 @@ export class ConsultService {
           serviceId: slot.serviceId || serviceId,
           availabilityId: slot.id,
           clientProfileId: clientProfile.id,
-          status: 'CONFIRMED',
+          status: 'PENDING_PAYMENT',
           notes: dto.notes,
           videoRoomName,
         },
@@ -420,19 +456,94 @@ export class ConsultService {
         where: { id: slot.id },
         data: { isActive: false },
       });
+      
+      // Increment usedCount if a discount code was successfully validated
+      if (dto.discountCode) {
+        await tx.discountCode.update({
+          where: { tenantId_code: { tenantId, code: dto.discountCode.toUpperCase().trim() } },
+          data: { usedCount: { increment: 1 } },
+        });
+      }
+
+      let paymentUrl = null;
+      let finalPriceKobo = BigInt(slot.service?.priceKobo || 0);
+
+      if (discountResult) {
+        finalPriceKobo = BigInt(discountResult.finalKobo);
+      }
+
+      if (finalPriceKobo > 0n) {
+        const splitConfig = await this.billing.calculateSplitPayout(tenantId, finalPriceKobo);
+        const reference = `booking-${booking.id}`;
+        
+        try {
+          const pTx = await this.paystack.initializeTransaction({
+            amount: Number(splitConfig.therapistPayoutKobo) + Number(splitConfig.platformFeeKobo),
+            email: clientProfile.email,
+            reference,
+            subaccount: splitConfig.paystackSubaccountCode || undefined,
+            bearer: 'subaccount',
+            split: splitConfig.tier === 'STARTER' ? 5 : undefined,
+          });
+
+          paymentUrl = pTx.authorization_url;
+
+          await tx.consultBooking.update({
+            where: { id: booking.id },
+            data: { paymentRef: reference },
+          });
+        } catch (e: any) {
+          throw new BadRequestException('Failed to initialize payment: ' + (e.message || 'Unknown error'));
+        }
+      } else {
+        // Free or fully discounted, confirm immediately
+        await tx.consultBooking.update({
+          where: { id: booking.id },
+          data: { status: 'CONFIRMED' },
+        });
+      }
 
       return {
         bookingId: booking.id.toString(),
-        status: booking.status,
+        status: finalPriceKobo > 0n ? 'PENDING_PAYMENT' : 'CONFIRMED',
         serviceTitle: slot.service?.title || 'Therapy Session',
         startsAt: slot.startsAt.toISOString(),
         endsAt: slot.endsAt.toISOString(),
         therapistName: `${slot.therapist.profile.firstName || ''} ${slot.therapist.profile.lastName || ''}`.trim(),
         videoRoomLink,
+        paymentUrl,
       };
     });
 
     return result;
+  }
+
+  async getBookingPaymentUrl(tenantId: bigint, bookingId: bigint, email: string) {
+    const booking = await this.prisma.consultBooking.findFirst({
+      where: { id: bookingId, tenantId, client: { email }, status: 'PENDING_PAYMENT' },
+      include: { service: true, client: true },
+    });
+
+    if (!booking || !booking.paymentRef) {
+      throw new NotFoundException('Pending payment booking not found');
+    }
+
+    const splitConfig = await this.billing.calculateSplitPayout(tenantId, BigInt(booking.service?.priceKobo || 0));
+    
+    try {
+      const pTx = await this.paystack.initializeTransaction({
+        amount: Number(splitConfig.therapistPayoutKobo) + Number(splitConfig.platformFeeKobo),
+        email: booking.client.email,
+        reference: booking.paymentRef, // Reusing the same reference
+        subaccount: splitConfig.paystackSubaccountCode || undefined,
+        bearer: 'subaccount',
+        split: splitConfig.tier === 'STARTER' ? 5 : undefined,
+      });
+
+      return { paymentUrl: pTx.authorization_url };
+    } catch (e: any) {
+      throw new BadRequestException('Failed to initialize payment: ' + (e.message || 'Unknown error'));
+    }
   }
 
   async getTherapistBookings(tenantId: bigint, providerProfileId: bigint) {
@@ -443,7 +554,7 @@ export class ConsultService {
       },
       include: {
         client: {
-          select: { firstName: true, lastName: true, email: true, phone: true, avatarUrl: true },
+          select: { id: true, firstName: true, lastName: true, email: true, phone: true, avatarUrl: true },
         },
         service: true,
         availability: true,
@@ -453,6 +564,7 @@ export class ConsultService {
 
     return bookings.map((b) => ({
       id: b.id.toString(),
+      clientId: b.client.id.toString(),
       clientName: `${b.client.firstName || ''} ${b.client.lastName || ''}`.trim() || 'Client',
       clientEmail: b.client.email,
       clientPhone: b.client.phone,
@@ -555,12 +667,30 @@ export class ConsultService {
       data: { status },
       include: {
         client: {
-          select: { firstName: true, lastName: true, email: true },
+          select: { id: true, firstName: true, lastName: true, email: true },
         },
         service: true,
         availability: true,
       },
     });
+
+    if (status === 'COMPLETED') {
+      const note = await this.prisma.clinicalNote.findFirst({
+        where: { bookingId },
+      });
+      if (!note) {
+        const clientName = `${updated.client.firstName || ''} ${updated.client.lastName || ''}`.trim() || 'Client';
+        await this.notifications.notify({
+          tenantId,
+          profileIds: [providerProfileId],
+          type: 'consult.soap_reminder',
+          title: 'Session complete — note pending',
+          message: `Write your SOAP note for ${clientName}'s session to complete the record.`,
+          link: `/portal/clients/${updated.client.id}?tab=notes&booking=${bookingId}`,
+          preferenceCategory: 'reminders',
+        });
+      }
+    }
 
     return {
       id: updated.id.toString(),

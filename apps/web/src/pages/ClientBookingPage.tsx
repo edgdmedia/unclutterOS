@@ -8,6 +8,17 @@ type PublicReview = { id: string; rating: number | null; testimonial: string; di
 type PublicReviewsPayload = { averageRating: number | null; count: number; reviews: PublicReview[] };
 type PublicService = { id: string; title: string; description?: string; durationMinutes: number; priceKobo: string };
 type PublicAvailability = { id: string; serviceId: string | null; therapistName: string; startsAt: string; endsAt: string };
+type PublicTenantInfo = { id: string; name: string; slug: string; customDomain?: string | null; primaryColor?: string; secondaryColor?: string };
+type DiscountPreview = {
+  code: string;
+  label?: string | null;
+  discountType: 'PERCENT' | 'FIXED';
+  discountPercent?: number | null;
+  discountAmountKobo?: string | null;
+  originalKobo: string;
+  finalKobo: string;
+  amountSavedKobo: string;
+};
 
 function formatMoney(kobo: string) {
   return `₦${(Number(kobo) / 100).toLocaleString('en-NG')}`;
@@ -34,6 +45,11 @@ export function ClientBookingPage() {
   const [loading, setLoading] = useState(true);
   const [bookingError, setBookingError] = useState<string | null>(null);
   const [bookingLoading, setBookingLoading] = useState(false);
+  const [tenantId, setTenantId] = useState('');
+  const [discountCode, setDiscountCode] = useState('');
+  const [discountLoading, setDiscountLoading] = useState(false);
+  const [discountError, setDiscountError] = useState<string | null>(null);
+  const [discountPreview, setDiscountPreview] = useState<DiscountPreview | null>(null);
 
   const brand = useBrand();
   const primaryColor = brand.primaryColor || '#0F3A53';
@@ -58,10 +74,12 @@ export function ClientBookingPage() {
           api.get<PublicService[]>('/v1/consult/public/services'),
           api.get<PublicAvailability[]>('/v1/consult/public/availability'),
         ]);
+        const tenantInfo = await api.get<PublicTenantInfo>(`/v1/tenant/public/info/${slug}`);
         if (cancelled) return;
         setReviews(reviewPayload);
         setServices(servicesPayload);
         setAvailability(availabilityPayload);
+        setTenantId(tenantInfo.id);
         const firstService = servicesPayload[0];
         if (firstService) setSelectedServiceId(firstService.id);
       } catch {
@@ -72,7 +90,7 @@ export function ClientBookingPage() {
     }
     void loadBookingData();
     return () => { cancelled = true; };
-  }, []);
+  }, [slug]);
 
   const selectedService = services.find((service) => service.id === selectedServiceId) || services[0];
   const filteredAvailability = useMemo(
@@ -108,7 +126,34 @@ export function ClientBookingPage() {
     }
   }, [availableSlots, selectedSlotId]);
 
+  useEffect(() => {
+    setDiscountPreview(null);
+    setDiscountError(null);
+  }, [selectedServiceId]);
+
   const selectedSlot = availableSlots.find((slot) => slot.id === selectedSlotId) || availableSlots[0];
+  const originalKobo = selectedService?.priceKobo || '0';
+  const finalKobo = discountPreview?.finalKobo || originalKobo;
+  const amountSavedKobo = discountPreview?.amountSavedKobo || '0';
+
+  const handleApplyDiscount = async () => {
+    if (!selectedService || !discountCode.trim() || !tenantId) return;
+    setDiscountLoading(true);
+    setDiscountError(null);
+    try {
+      const preview = await api.post<DiscountPreview>('/v1/discount/validate', {
+        tenantId,
+        code: discountCode.trim(),
+        priceKobo: selectedService.priceKobo,
+      }, { 'X-Tenant-Slug': '' });
+      setDiscountPreview(preview);
+    } catch (err) {
+      setDiscountPreview(null);
+      setDiscountError(err instanceof Error ? err.message : 'Unable to apply discount code');
+    } finally {
+      setDiscountLoading(false);
+    }
+  };
 
   const handleConfirmBooking = async () => {
     if (!selectedService || !selectedSlot) return;
@@ -116,7 +161,7 @@ export function ClientBookingPage() {
     setBookingError(null);
     try {
       const [firstName, ...rest] = fullName.trim().split(/\s+/).filter(Boolean);
-      const booking = await api.post<{ bookingId: string; startsAt: string; endsAt: string; serviceTitle: string; therapistName: string; videoRoomLink: string; status: string }>('/v1/consult/public/bookings', {
+      const booking = await api.post<{ bookingId: string; startsAt: string; endsAt: string; serviceTitle: string; therapistName: string; videoRoomLink: string; status: string; paymentUrl?: string }>('/v1/consult/public/bookings', {
         serviceId: selectedService.id,
         availabilityId: selectedSlot.id,
         firstName,
@@ -124,8 +169,14 @@ export function ClientBookingPage() {
         email,
         phone,
         notes: concerns,
+        discountCode: discountPreview ? discountPreview.code : undefined,
       });
-      navigate('/booking/confirmed', { state: { booking, fullName, email } });
+
+      if (booking.paymentUrl) {
+        window.location.href = booking.paymentUrl;
+      } else {
+        navigate('/booking/confirmed', { state: { booking, fullName, email } });
+      }
     } catch (err) {
       setBookingError(err instanceof Error ? err.message : 'Unable to complete booking');
     } finally {
@@ -210,7 +261,37 @@ export function ClientBookingPage() {
               <div className="flex items-center justify-between"><span className="text-[12.5px] font-semibold text-[#94A3B8]">Therapist</span><span className="font-bold text-[#0F172A]">{selectedSlot?.therapistName || therapistName}</span></div>
               <div className="flex items-center justify-between"><span className="text-[12.5px] font-semibold text-[#94A3B8]">Format</span><span className="font-bold text-[#0F172A] capitalize">{sessionFormat}</span></div>
               <div className="h-[1px] bg-[#E2E8F0] my-2" />
-              <div className="flex items-baseline justify-between pt-1"><span className="text-[13px] font-bold text-[#475569]">Total</span><span className="text-[26px] font-extrabold tracking-[-0.035em] text-[#0F172A]">{selectedService ? formatMoney(selectedService.priceKobo) : '--'}</span></div>
+              <div className="space-y-2">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={discountCode}
+                    onChange={(e) => setDiscountCode(e.target.value.toUpperCase())}
+                    placeholder="Discount code"
+                    className="flex-1 h-[42px] px-3 rounded-[12px] bg-[#F8FAFC] border border-[#E2E8F0] text-[12.5px] font-semibold text-[#0F172A] outline-none focus:bg-white focus:border-[#94A3B8]"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleApplyDiscount}
+                    disabled={discountLoading || !discountCode.trim() || !selectedService || !tenantId}
+                    className="h-[42px] px-3 rounded-[12px] text-[12px] font-bold text-white disabled:opacity-60 cursor-pointer"
+                    style={{ backgroundColor: primaryColor }}
+                  >
+                    {discountLoading ? 'Applying...' : 'Apply code'}
+                  </button>
+                </div>
+                {discountError ? <p className="text-[11.5px] text-red-500 font-medium">{discountError}</p> : null}
+                {discountPreview ? (
+                  <p className="text-[11.5px] text-emerald-700 font-bold">
+                    {discountPreview.discountType === 'PERCENT'
+                      ? `${discountPreview.discountPercent}% off applied`
+                      : `${formatMoney(discountPreview.amountSavedKobo)} off applied`}
+                  </p>
+                ) : null}
+              </div>
+              <div className="flex items-center justify-between"><span className="text-[12.5px] font-semibold text-[#94A3B8]">Original</span><span className="font-bold text-[#0F172A]">{selectedService ? formatMoney(originalKobo) : '--'}</span></div>
+              <div className="flex items-center justify-between"><span className="text-[12.5px] font-semibold text-[#94A3B8]">Discount</span><span className="font-bold text-emerald-700">-{formatMoney(amountSavedKobo)}</span></div>
+              <div className="flex items-baseline justify-between pt-1"><span className="text-[13px] font-bold text-[#475569]">Final total</span><span className="text-[26px] font-extrabold tracking-[-0.035em] text-[#0F172A]">{selectedService ? formatMoney(finalKobo) : '--'}</span></div>
             </div>
             <div className="p-[0_22px_22px] space-y-3">
               <button onClick={handleConfirmBooking} disabled={bookingLoading || !selectedService || !selectedSlot} className="os-brand-btn w-full h-[52px] rounded-[16px] font-bold text-[15px] flex items-center justify-center gap-2 cursor-pointer shadow-[0_10px_26px_rgba(15,58,83,.2)] disabled:opacity-60" style={{ backgroundColor: primaryColor }}><span>{bookingLoading ? 'Booking session...' : 'Confirm & Book Session'}</span><ArrowRight className="h-4 w-4" /></button>

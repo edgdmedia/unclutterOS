@@ -30,6 +30,20 @@ export class TenantController {
     return this.tenantService.getPublicTenantInfo(slugOrDomain);
   }
 
+  @Get('check-slug/:slug')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Check if a practice subdomain handle is available' })
+  checkSlug(@Req() req: any, @Param('slug') slug: string) {
+    let tenantId: bigint | undefined;
+    try {
+      tenantId = authenticatedTenantId(req);
+    } catch {
+      // Unauthenticated fallback
+    }
+    return this.tenantService.checkSlugAvailability(slug, tenantId);
+  }
+
   @Get('public/info')
   @ApiOperation({ summary: 'Get public brand config from resolved request host' })
   getPublicInfoFromHost(@Req() req: TenantRequest) {

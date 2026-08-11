@@ -17,6 +17,7 @@ import {
   CalendarClock,
   Settings,
   ChevronDown,
+  Tag,
 } from 'lucide-react';
 import { useBrand, UnclutterLockup } from '@unclutteros/ui';
 import { useAuth } from '../context/AuthContext';
@@ -27,6 +28,7 @@ interface NavItem {
   icon: typeof LayoutDashboard;
   counter?: string;
   counterType?: 'gold' | 'neutral' | 'rose';
+  tier?: 'pro' | 'clinic';
 }
 
 const NAV_ITEMS: NavItem[] = [
@@ -43,25 +45,56 @@ const ACCOUNT_MENU_ITEMS: { to: string; label: string; icon: typeof IdCard }[] =
   { to: '/portal/settings/account', label: 'Account & preferences', icon: UserCog },
 ];
 
-const PRACTICE_GROUPS: { label: string; items: NavItem[] }[] = [
+// Full settings visible to practice owners and admins only
+const PRACTICE_GROUPS_OWNER: { label: string; items: NavItem[] }[] = [
   {
     label: 'Client-facing',
     items: [
       { to: '/portal/settings/profile', label: 'Practice profile', icon: IdCard },
-      { to: '/portal/settings/brand', label: 'Brand & booking page', icon: Palette },
+      { to: '/portal/settings/brand', label: 'Brand & booking page', icon: Palette, tier: 'pro' },
     ],
   },
   {
     label: 'Operations',
     items: [
       { to: '/portal/settings/availability', label: 'Availability', icon: CalendarClock },
-      { to: '/portal/settings/team', label: 'Team & staff', icon: Users },
+      { to: '/portal/settings/services', label: 'Services & pricing', icon: Settings },
+      { to: '/portal/settings/team', label: 'Team & staff', icon: Users, tier: 'clinic' },
       { to: '/portal/settings/subscription', label: 'Subscription', icon: CreditCard },
       { to: '/portal/settings/payouts', label: 'Payouts', icon: CreditCard },
-      { to: '/portal/settings/forms', label: 'Forms & assessments', icon: FileText },
+      { to: '/portal/settings/forms', label: 'Forms & assessments', icon: FileText, tier: 'pro' },
+      { to: '/portal/settings/discounts', label: 'Discounts & promos', icon: Tag, tier: 'pro' },
     ],
   },
 ];
+
+// Therapists only manage their own availability
+const PRACTICE_GROUPS_THERAPIST: { label: string; items: NavItem[] }[] = [
+  {
+    label: 'My settings',
+    items: [
+      { to: '/portal/settings/availability', label: 'Availability', icon: CalendarClock },
+    ],
+  },
+];
+
+// Receptionists can view their schedule availability — nothing else
+const PRACTICE_GROUPS_RECEPTIONIST: { label: string; items: NavItem[] }[] = [
+  {
+    label: 'My settings',
+    items: [
+      { to: '/portal/settings/availability', label: 'Availability', icon: CalendarClock },
+    ],
+  },
+];
+
+function getPracticeGroups(profile: any): { label: string; items: NavItem[] }[] {
+  if (profile?.role === 'owner' || profile?.role === 'admin' || profile?.type === 'admin') {
+    return PRACTICE_GROUPS_OWNER;
+  }
+  if (profile?.type === 'receptionist') return PRACTICE_GROUPS_RECEPTIONIST;
+  return PRACTICE_GROUPS_THERAPIST;
+}
 
 const PRACTICE_OPEN_KEY = 'unclutter_sidebar_practice_open';
 
@@ -71,11 +104,12 @@ function counterClasses(type: 'gold' | 'neutral' | 'rose'): string {
   return 'bg-white/10 text-[#CBD5E1]';
 }
 
-function NavLinkItem({ item, indent = false }: { item: NavItem; indent?: boolean }) {
+function NavLinkItem({ item, indent = false, currentPlan = 'starter' }: { item: NavItem; indent?: boolean; currentPlan?: string }) {
   const Icon = item.icon;
   return (
     <NavLink
       to={item.to}
+      end={item.to === '/portal'}
       className={({ isActive }) =>
         `relative flex items-center gap-2.5 h-[44px] ${
           indent ? 'pr-3 pl-[30px]' : 'px-3'
@@ -99,7 +133,18 @@ function NavLinkItem({ item, indent = false }: { item: NavItem; indent?: boolean
           )}
           <Icon className={`h-[18px] w-[18px] ${isActive ? 'stroke-[var(--brand-secondary,#E3B341)]' : 'stroke-current'}`} />
           <span className="truncate">{item.label}</span>
-          {item.counter && (
+          {item.tier && (
+            <span
+              className={`ml-auto h-[16px] px-1.5 rounded-[4px] text-[8.5px] font-extrabold flex items-center justify-center uppercase tracking-wider ${
+                (item.tier === 'pro' && currentPlan === 'starter') || (item.tier === 'clinic' && currentPlan !== 'clinic')
+                  ? 'bg-[#1E293B] text-[#94A3B8] border border-white/5'
+                  : 'bg-[var(--brand-secondary,#E3B341)] text-[#0F172A]'
+              }`}
+            >
+              {item.tier}
+            </span>
+          )}
+          {!item.tier && item.counter && (
             <span
               className={`ml-auto h-5 px-2 rounded-full text-[10.5px] font-extrabold flex items-center justify-center ${counterClasses(item.counterType ?? 'neutral')}`}
             >
@@ -135,7 +180,7 @@ function UserMenuLink({
   );
 }
 
-export function Sidebar() {
+export function Sidebar({ plan = 'starter' }: { plan?: string }) {
   const brand = useBrand();
   const { profile, logout } = useAuth();
   const navigate = useNavigate();
@@ -144,6 +189,7 @@ export function Sidebar() {
     () => localStorage.getItem(PRACTICE_OPEN_KEY) !== '0',
   );
   const [menuOpen, setMenuOpen] = useState(false);
+  const practiceGroups = getPracticeGroups(profile);
   const userMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -205,7 +251,7 @@ export function Sidebar() {
         {/* Navigation Links */}
         <nav className="space-y-1">
           {NAV_ITEMS.map((item) => (
-            <NavLinkItem key={item.to} item={item} />
+            <NavLinkItem key={item.to} item={item} currentPlan={plan} />
           ))}
 
           <button
@@ -230,13 +276,13 @@ export function Sidebar() {
           </button>
           {practiceOpen && (
             <div className="space-y-1">
-              {PRACTICE_GROUPS.map((group) => (
+              {practiceGroups.map((group) => (
                 <div key={group.label} className="space-y-1">
                   <div className="text-[9px] font-black tracking-[0.2em] uppercase text-[#475569] pl-[30px] pt-3 pb-1">
                     {group.label}
                   </div>
                   {group.items.map((item) => (
-                    <NavLinkItem key={item.to} item={item} indent />
+                    <NavLinkItem key={item.to} item={item} indent currentPlan={plan} />
                   ))}
                 </div>
               ))}
@@ -268,7 +314,10 @@ export function Sidebar() {
           <div className="truncate text-left">
             <p className="text-[12.5px] font-semibold text-[#E2E8F0] truncate leading-snug">{displayName}</p>
             <p className="text-[10px] text-[#64748B] font-medium leading-none">
-              {profile?.type === 'admin' ? 'Administrator' : brand.name}
+              {profile?.type === 'admin' ? 'Administrator'
+                : profile?.type === 'therapist' ? 'Therapist'
+                : profile?.type === 'receptionist' ? 'Receptionist'
+                : brand.name}
             </p>
           </div>
           <ChevronDown

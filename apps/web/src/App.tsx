@@ -19,6 +19,7 @@ const SubscriptionSettingsPage = lazy(() => import('./pages/SubscriptionSettings
 const PayoutSettingsPage = lazy(() => import('./pages/PayoutSettingsPage').then((m) => ({ default: m.PayoutSettingsPage })));
 const FormsManagerPage = lazy(() => import('./pages/FormsManagerPage').then((m) => ({ default: m.FormsManagerPage })));
 const FormEditorPage = lazy(() => import('./pages/FormEditorPage').then((m) => ({ default: m.FormEditorPage })));
+const DiscountSettingsPage = lazy(() => import('./pages/DiscountSettingsPage').then((m) => ({ default: m.DiscountSettingsPage })));
 const TelehealthVideoRoomPage = lazy(() => import('./pages/TelehealthVideoRoomPage').then((m) => ({ default: m.TelehealthVideoRoomPage })));
 const SessionPrepPage = lazy(() => import('./pages/SessionPrepPage').then((m) => ({ default: m.SessionPrepPage })));
 const ClientPortalPage = lazy(() => import('./pages/ClientPortalPage').then((m) => ({ default: m.ClientPortalPage })));
@@ -51,6 +52,7 @@ const AdminTenantDetailPage = lazy(() => import('./pages/admin/AdminTenantDetail
 
 export interface CalendarEvent {
   id: string;
+  clientId?: string;
   title: string;
   type: string;
   startsAt: string;
@@ -112,6 +114,7 @@ export interface BillingInfo {
 // ── Booking shape returned by API ─────────────────────────────────────────────
 interface ApiBooking {
   id: string;
+  clientId: string;
   clientName: string;
   clientEmail?: string;
   serviceTitle: string;
@@ -142,6 +145,7 @@ function bookingToEvent(b: ApiBooking): CalendarEvent {
       : 'individual';
   return {
     id: b.id,
+    clientId: b.clientId,
     title: b.clientName,
     type: b.serviceTitle,
     startsAt: b.startsAt,
@@ -421,7 +425,7 @@ function AppLayout() {
   return (
     <BrandProvider brand={practiceBrand}>
       <div className="flex min-h-screen bg-[#F8FAFC]">
-        <Sidebar />
+        <Sidebar plan={billingInfo?.plan} />
         <div className="flex-1 flex flex-col min-w-0">
           <Suspense fallback={<PageFallback />}>
             <Routes>
@@ -467,6 +471,7 @@ function AppLayout() {
               <Route path="/portal/settings/payouts" element={<PayoutSettingsPage />} />
               <Route path="/portal/settings/forms" element={<FormsManagerPage />} />
               <Route path="/portal/settings/forms/:id" element={<FormEditorPage />} />
+              <Route path="/portal/settings/discounts" element={<DiscountSettingsPage />} />
               <Route path="/" element={<RootRedirect />} />
             </Routes>
           </Suspense>

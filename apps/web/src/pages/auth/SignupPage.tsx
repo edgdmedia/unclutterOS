@@ -25,6 +25,7 @@ export function SignupPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   const passwordChecks = useMemo(() => PASSWORD_RULES.map((rule) => ({ ...rule, ok: rule.test(password) })), [password]);
   const passwordValid = passwordChecks.every((c) => c.ok);
@@ -34,6 +35,10 @@ export function SignupPage() {
     setError(null);
     if (!passwordValid) {
       setError('Your password does not meet all the requirements below.');
+      return;
+    }
+    if (!agreedToTerms) {
+      setError('You must agree to the Terms of Service to create a practice.');
       return;
     }
     setSubmitting(true);
@@ -241,9 +246,19 @@ export function SignupPage() {
         </button>
       </form>
 
-      <p className="mt-[14px] text-[11.5px] text-[#94A3B8] text-center leading-[1.6]">
-        By creating a practice you agree to the unclutterOS terms and privacy policy.
-      </p>
+        <div className="mt-2 flex items-start gap-3 px-1">
+          <input
+            type="checkbox"
+            id="terms"
+            required
+            checked={agreedToTerms}
+            onChange={(e) => setAgreedToTerms(e.target.checked)}
+            className="mt-0.5 h-[18px] w-[18px] rounded-[5px] border-[#CBD5E1] text-[#0F3A53] focus:ring-[#0F3A53] cursor-pointer shrink-0"
+          />
+          <label htmlFor="terms" className="text-[11.5px] text-[#64748B] leading-[1.5]">
+            I agree to the <Link to="/terms-of-service" target="_blank" className="font-bold text-[#0F3A53] hover:underline">Terms of Service</Link> and <Link to="/privacy-policy" target="_blank" className="font-bold text-[#0F3A53] hover:underline">Privacy Policy</Link>, and I acknowledge that I am solely responsible and liable for all clinical advice, diagnosis, and services provided to clients via this platform.
+          </label>
+        </div>
 
       <div className="mt-[18px] text-[13.5px] text-[#64748B] text-center">
         Already have an account?{' '}

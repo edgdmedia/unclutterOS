@@ -4,8 +4,28 @@ import { Eyebrow } from '@unclutteros/ui';
 import { useBrand } from '@unclutteros/ui';
 import { api } from '../utils/apiClient';
 
-type SubscriptionRecord = { subscriptionTier: 'STARTER' | 'PRO' | 'CLINIC'; nextBillingDate: string; nextChargeAmount: string };
+type SubscriptionRecord = {
+  subscriptionTier: 'STARTER' | 'PRO' | 'CLINIC';
+  nextBillingDate: string;
+  nextChargeAmount: string;
+  currentMonthBookings?: number;
+  canDowngradeToStarter?: boolean;
+  canDowngradeToPro?: boolean;
+  starterBlockReason?: string | null;
+  proBlockReason?: string | null;
+};
 type BillingSummary = { subscription: SubscriptionRecord; history: Array<{ date: string; title: string; detail: string; type: string }> };
+
+function getPlanDisabledReason(plan: SubscriptionRecord['subscriptionTier'], subscription: SubscriptionRecord) {
+  if (plan === subscription.subscriptionTier) return null;
+  if (plan === 'STARTER' && subscription.canDowngradeToStarter === false) {
+    return subscription.starterBlockReason || 'Downgrade blocked';
+  }
+  if (plan === 'PRO' && subscription.subscriptionTier === 'CLINIC' && subscription.canDowngradeToPro === false) {
+    return subscription.proBlockReason || 'Downgrade blocked';
+  }
+  return null;
+}
 
 export function SubscriptionSettingsPage() {
   const brand = useBrand();
@@ -26,8 +46,8 @@ export function SubscriptionSettingsPage() {
           setSubscription(data.subscription);
           setHistory(data.history);
         }
-      } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'Unable to load subscription');
+      } catch (err: any) {
+        if (!cancelled) setError(err.response?.data?.message || err.message || 'Unable to load subscription');
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -45,8 +65,8 @@ export function SubscriptionSettingsPage() {
       const refreshed = await api.get<BillingSummary>('/v1/billing/summary');
       setSubscription(refreshed.subscription);
       setHistory(refreshed.history);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unable to update subscription');
+    } catch (err: any) {
+      setError(err.response?.data?.message || err.message || 'Unable to update subscription');
     } finally {
       setSaving(false);
     }
@@ -71,15 +91,32 @@ export function SubscriptionSettingsPage() {
                 { key: 'STARTER' as const, name: 'Starter', price: '₦0/month', tone: 'light', features: ['1 Practitioner profile', 'Up to 20 bookings / mo', 'Instant Jitsi WebRTC video'] },
                 { key: 'PRO' as const, name: 'Pro Solo', price: '₦25,000/month', tone: 'dark', features: ['Unlimited sessions & bookings', '1 Receptionist / Staff login', 'Custom Domain (CNAME)', 'Daily.co BYOK Cloud Recording'] },
                 { key: 'CLINIC' as const, name: 'Group Clinic', price: '₦75,000/month', tone: 'light', features: ['Up to 25 Therapist profiles', 'Group Clinic RBAC Roles', 'Supervisor case reviews'] },
-              ].map((plan) => (
-                <button key={plan.key} onClick={() => void handleSelectPlan(plan.key)} disabled={saving} className={`p-6 rounded-[24px] cursor-pointer transition-all relative flex flex-col justify-between space-y-4 text-left ${plan.tone === 'dark' ? 'bg-[#0F172A] text-white' : 'bg-white'} ${subscription.subscriptionTier === plan.key ? `border-2 ${plan.tone === 'dark' ? 'border-[#E3B341]' : 'border-[#0F3A53]'}` : 'border border-[#E2E8F0]'} disabled:opacity-60`}>
+              ].map((plan) => {
+                const disabledReason = getPlanDisabledReason(plan.key, subscription);
+                const isDisabled = saving || !!disabledReason;
+
+                return (
+                <button key={plan.key} onClick={() => void handleSelectPlan(plan.key)} disabled={isDisabled} className={`p-6 rounded-[24px] transition-all relative flex flex-col justify-between space-y-4 text-left ${plan.tone === 'dark' ? 'bg-[#0F172A] text-white' : 'bg-white'} ${subscription.subscriptionTier === plan.key ? `border-2 ${plan.tone === 'dark' ? 'border-[#E3B341]' : 'border-[#0F3A53]'}` : 'border border-[#E2E8F0]'} ${isDisabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'} disabled:opacity-60`}>
                   <div className="space-y-3">
                     <div className="flex items-center justify-between"><h3 className="text-[18px] font-extrabold">{plan.name}</h3>{subscription.subscriptionTier === plan.key ? <span className="text-[10px] font-black uppercase tracking-wider">Current</span> : null}</div>
                     <div className="text-[28px] font-extrabold">{plan.price}</div>
-                    <ul className={`space-y-2 text-xs font-medium pt-2 border-t ${plan.tone === 'dark' ? 'text-slate-300 border-slate-800' : 'text-[#475569] border-[#F1F5F9]'}`}>{plan.features.map((feature) => <li key={feature} className="flex items-center gap-2"><Check className={`h-3.5 w-3.5 ${plan.tone === 'dark' ? 'text-[#E3B341]' : 'text-emerald-600'}`} /> {feature}</li>)}</ul>
+                    <ul className={`space-y-2 text-xs font-medium pt-2 border-t ${plan.tone === 'dark' ? 'text-slate-300 border-slate-800' : 'text-[#475569] border-[#F1F5F9]'}`}>
+                      {plan.features.map((feature) => <li key={feature} className="flex items-center gap-2"><Check className={`h-3.5 w-3.5 ${plan.tone === 'dark' ? 'text-[#E3B341]' : 'text-emerald-600'}`} /> {feature}</li>)}
+                      {plan.key === 'STARTER' && subscription.subscriptionTier === 'STARTER' && subscription.currentMonthBookings !== undefined && (
+                        <li className="flex items-center gap-2 pt-2 text-[#0F3A53] font-bold">
+                          <TrendingUp className="h-3.5 w-3.5" />
+                          {subscription.currentMonthBookings} of 20 bookings used this month
+                        </li>
+                      )}
+                    </ul>
+                    {disabledReason ? (
+                      <div className="rounded-[12px] bg-amber-50 border border-amber-200 px-3 py-2 text-[11px] font-medium text-amber-800">
+                        {disabledReason}
+                      </div>
+                    ) : null}
                   </div>
                 </button>
-              ))}
+              )})}
             </div>
             <div className="rounded-[24px] border border-[#E2E8F0] bg-white px-6 py-6 space-y-3">
               <div className="flex items-center gap-2 text-sm font-bold text-[#0F172A]"><TrendingUp className="h-4 w-4 text-[#0F3A53]" /> Billing history</div>

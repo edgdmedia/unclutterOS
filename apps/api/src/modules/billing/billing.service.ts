@@ -1,9 +1,17 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, Logger } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { PaystackService } from './paystack.service';
+import { CalendarService } from '../calendar/calendar.service';
 
 @Injectable()
 export class BillingService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly logger = new Logger(BillingService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly paystack: PaystackService,
+    private readonly calendar: CalendarService,
+  ) {}
 
   async getBankSubaccount(tenantId: bigint) {
     const subaccount = await this.prisma.bankSubaccount.findUnique({
@@ -84,8 +92,41 @@ export class BillingService {
       },
     ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
+    let currentMonthBookings = 0;
+    if (subscription.subscriptionTier === 'STARTER') {
+      const monthStart = new Date();
+      monthStart.setDate(1);
+      monthStart.setHours(0, 0, 0, 0);
+      currentMonthBookings = await this.prisma.consultBooking.count({
+        where: { tenantId, createdAt: { gte: monthStart }, status: { not: 'CANCELLED' } },
+      });
+    }
+
+    const [staffCount, therapistCount] = await Promise.all([
+      this.prisma.profile.count({
+        where: { tenantId, role: { notIn: ['CLIENT', 'OWNER'] } },
+      }),
+      this.prisma.profile.count({
+        where: { tenantId, role: 'THERAPIST' },
+      }),
+    ]);
+
+    const canDowngradeToStarter = staffCount === 0;
+    const canDowngradeToPro = therapistCount <= 1;
+
     return {
-      subscription,
+      subscription: {
+        ...subscription,
+        currentMonthBookings,
+        canDowngradeToStarter,
+        canDowngradeToPro,
+        starterBlockReason: canDowngradeToStarter
+          ? null
+          : 'Remove active staff members before downgrading to Starter.',
+        proBlockReason: canDowngradeToPro
+          ? null
+          : 'Group practices with multiple therapists require the Clinic plan.',
+      },
       bankSubaccount,
       history,
     };
@@ -101,7 +142,24 @@ export class BillingService {
       throw new BadRequestException('Complete bank account details are required');
     }
 
-    const paystackCode = `ACCT_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+    const tenant = await this.prisma.tenant.findUnique({ where: { id: tenantId } });
+    if (!tenant) throw new NotFoundException('Practice tenant not found');
+
+    let paystackCode = '';
+    
+    try {
+      const psResponse = await this.paystack.createSubaccount({
+        business_name: tenant.name,
+        settlement_bank: dto.bankCode,
+        account_number: dto.accountNumber.trim(),
+        percentage_charge: 5, // 5% platform fee for example
+        description: `Subaccount for ${tenant.name}`,
+      });
+      
+      paystackCode = psResponse.subaccount_code;
+    } catch (e: any) {
+      throw new BadRequestException('Failed to verify bank account with Paystack. Please check details.');
+    }
 
     const subaccount = await this.prisma.bankSubaccount.upsert({
       where: { tenantId },
@@ -140,6 +198,24 @@ export class BillingService {
       throw new BadRequestException('Invalid subscription plan tier');
     }
 
+    if (plan === 'STARTER') {
+      const staffCount = await this.prisma.profile.count({
+        where: { tenantId, role: { notIn: ['CLIENT', 'OWNER'] } },
+      });
+      if (staffCount > 0) {
+        throw new BadRequestException('Cannot downgrade to Starter: your practice has active staff members. Remove them first.');
+      }
+    }
+
+    if (plan === 'PRO' || plan === 'STARTER') {
+      const therapistCount = await this.prisma.profile.count({
+        where: { tenantId, role: 'THERAPIST' },
+      });
+      if (therapistCount > 1) {
+        throw new BadRequestException('Cannot downgrade: your practice has multiple therapists. Remove them to downgrade.');
+      }
+    }
+
     const tenant = await this.prisma.tenant.update({
       where: { id: tenantId },
       data: { subscriptionTier: plan },
@@ -171,5 +247,25 @@ export class BillingService {
       paystackSubaccountCode: tenant?.bankSubaccount?.paystackCode || null,
       tier,
     };
+  }
+
+  async handleWebhook(event: string, data: any) {
+    if (event === 'charge.success') {
+      const reference = data.reference; // 'booking-123456789'
+      if (reference?.startsWith('booking-')) {
+        const idStr = reference.split('-')[1];
+        const bookingId = BigInt(idStr);
+        
+        await this.prisma.consultBooking.updateMany({
+          where: { paymentRef: reference, status: 'PENDING_PAYMENT' },
+          data: {
+            status: 'CONFIRMED',
+            paidAt: new Date(data.paid_at || Date.now()),
+          },
+        });
+        
+        await this.calendar.pushBookingToGoogle(bookingId);
+      }
+    }
   }
 }

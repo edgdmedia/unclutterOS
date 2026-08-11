@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException, ConflictException, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
 
@@ -32,6 +32,21 @@ export class TenantService {
         currency: dto.currency || 'NGN',
       },
     });
+  }
+
+  async checkSlugAvailability(slug: string, tenantId?: bigint) {
+    const cleanSlug = slug.toLowerCase().trim().replace(/[^a-z0-9-]/g, '');
+    if (!cleanSlug) return { available: false, reason: 'Slug is empty' };
+
+    const existing = await this.prisma.tenant.findUnique({
+      where: { slug: cleanSlug },
+      select: { id: true },
+    });
+
+    if (!existing || (tenantId && existing.id === tenantId)) {
+      return { available: true, slug: cleanSlug };
+    }
+    return { available: false, slug: cleanSlug, reason: 'Slug is already taken' };
   }
 
   async getPublicTenantInfo(slugOrDomain: string) {
@@ -92,6 +107,14 @@ export class TenantService {
     address?: string;
     category?: string;
   }) {
+    if (dto.customDomain) {
+      const tenant = await this.prisma.tenant.findUnique({ where: { id: tenantId } });
+      const tier = (tenant?.subscriptionTier || 'STARTER').toUpperCase();
+      if (tier === 'STARTER') {
+        throw new ForbiddenException('Custom domain requires a Pro subscription.');
+      }
+    }
+
     const data: Prisma.TenantUpdateInput = {
       ...(dto.name ? { name: dto.name.trim() } : {}),
       ...(dto.slug ? { slug: dto.slug.toLowerCase().trim() } : {}),

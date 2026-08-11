@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Copy, Check, Bell, Link2, Calendar, FileText, Video, Upload, Globe, Palette, Sparkles, TrendingUp, CheckCircle2 } from 'lucide-react';
+import { Copy, Check, Bell, Link2, Calendar, FileText, Video, Upload, Globe, Palette, Sparkles, TrendingUp, CheckCircle2, ArrowRight } from 'lucide-react';
 import { Button } from '@unclutteros/ui';
 import { useAuth } from '../context/AuthContext';
 import { api, TENANT_SLUG } from '../utils/apiClient';
@@ -96,7 +96,10 @@ export function DashboardPage(props: DashboardPageProps) {
       if (dashSummaryRes.status === 'fulfilled' && dashSummaryRes.value) {
         setSummary(dashSummaryRes.value);
         if (dashSummaryRes.value.onboardingCompleted === false) {
-          navigate('/onboarding');
+          const skipped = sessionStorage.getItem('unclutter_skip_onboarding') === 'true';
+          if (!skipped) {
+            navigate('/onboarding');
+          }
         }
       }
     }
@@ -472,93 +475,21 @@ export function DashboardPage(props: DashboardPageProps) {
             </p>
           </div>
 
-          {/* Brand Styling Customizer Card */}
-          <div className="os-card p-[22px] space-y-4">
-            <div className="flex items-center justify-between border-b border-[#E2E8F0] pb-3">
-              <div>
-                <span className="os-eyebrow block">BRAND STYLING</span>
-                <h3 className="text-[15px] font-bold text-[#0F172A]">Your booking page</h3>
-              </div>
-              <span className="h-[22px] px-2.5 rounded-full bg-[#FBF1DA] text-[#8A6512] text-[10px] font-extrabold tracking-[0.06em] flex items-center">
-                WHITE-LABEL
-              </span>
+          {/* Practice Branding & Settings Shortcut Card */}
+          <div className="os-card p-[20px_22px] flex items-center justify-between gap-3">
+            <div>
+              <span className="os-eyebrow block">PRACTICE BRANDING</span>
+              <h4 className="text-[14px] font-bold text-[#0F172A] mt-0.5">Colors & Custom Domain</h4>
+              <p className="text-[12px] text-[#64748B] font-medium mt-0.5">
+                Manage your brand palette, logo, and white-label CNAME.
+              </p>
             </div>
-
-            {/* 2-Col Color Inputs */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="p-[10px_12px] bg-[#F8FAFC] border border-[#E2E8F0] rounded-[16px] flex items-center gap-2">
-                <input
-                  type="color"
-                  value={primaryColor}
-                  onChange={(e) => props.setPrimaryColor?.(e.target.value)}
-                  className="h-9 w-9 rounded-[10px] border-none cursor-pointer p-0 shrink-0"
-                />
-                <div>
-                  <span className="text-[11px] font-bold text-[#64748B] block">Primary</span>
-                  <span className="text-[12px] font-mono font-bold text-[#0F172A] uppercase">{primaryColor}</span>
-                </div>
-              </div>
-
-              <div className="p-[10px_12px] bg-[#F8FAFC] border border-[#E2E8F0] rounded-[16px] flex items-center gap-2">
-                <input
-                  type="color"
-                  value={secondaryColor}
-                  onChange={(e) => props.setSecondaryColor?.(e.target.value)}
-                  className="h-9 w-9 rounded-[10px] border-none cursor-pointer p-0 shrink-0"
-                />
-                <div>
-                  <span className="text-[11px] font-bold text-[#64748B] block">Secondary</span>
-                  <span className="text-[12px] font-mono font-bold text-[#0F172A] uppercase">{secondaryColor}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Presets */}
-            <div className="space-y-1.5">
-              <span className="text-[10.5px] font-bold text-[#94A3B8] uppercase block">Presets</span>
-              <div className="flex items-center gap-2">
-                {presetSwatches.map((swatch, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => {
-                      props.setPrimaryColor?.(swatch.primary);
-                      props.setSecondaryColor?.(swatch.secondary);
-                    }}
-                    className={`h-[30px] w-[30px] rounded-[10px] overflow-hidden flex cursor-pointer border-2 transition-all ${
-                      primaryColor === swatch.primary ? 'border-[#0F172A]' : 'border-[#E2E8F0]'
-                    }`}
-                  >
-                    <span className="w-1/2 h-full" style={{ backgroundColor: swatch.primary }} />
-                    <span className="w-1/2 h-full" style={{ backgroundColor: swatch.secondary }} />
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Custom Domain Input */}
-            <div className="space-y-1.5 pt-2 border-t border-[#E2E8F0]">
-              <div className="flex items-center justify-between">
-                <label className="text-[11.5px] font-bold text-[#475569]">Custom domain (CNAME)</label>
-                <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
-                  VERIFIED
-                </span>
-              </div>
-              <div className="h-[44px] bg-[#F8FAFC] border border-[#E2E8F0] rounded-[14px] px-3 flex items-center gap-2">
-                <Globe className="h-4 w-4 text-[#64748B]" />
-                <input
-                  type="text"
-                  value={customDomain}
-                  onChange={(e) => setCustomDomain(e.target.value)}
-                  className="w-full bg-transparent text-[12.5px] font-mono font-bold text-[#0F172A] outline-none"
-                />
-              </div>
-            </div>
-
             <button
-              className="os-brand-btn w-full h-[44px] rounded-[14px] font-bold text-xs flex items-center justify-center gap-2 cursor-pointer"
-              style={{ backgroundColor: primaryColor }}
+              onClick={() => navigate('/settings/brand')}
+              className="h-9 px-3.5 rounded-[12px] bg-[#F1F5F9] text-[#0F172A] text-xs font-bold hover:bg-[#E2E8F0] transition-colors shrink-0 flex items-center gap-1 cursor-pointer"
             >
-              <span>Save brand settings</span>
+              <span>Settings</span>
+              <ArrowRight className="h-3.5 w-3.5 text-[#64748B]" />
             </button>
           </div>
         </div>

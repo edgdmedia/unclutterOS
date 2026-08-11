@@ -145,6 +145,13 @@ export class ConsultController {
     return this.consultService.createBooking(req.tenantId, dto);
   }
 
+  @Post('public/bookings/:bookingId/pay')
+  @ApiOperation({ summary: 'Get payment URL for an existing pending booking' })
+  getBookingPaymentUrl(@Req() req: TenantRequest, @Param('bookingId') bookingId: string, @Body() dto: { email: string }) {
+    if (!req.tenantId) throw new Error('Practice tenant context required');
+    return this.consultService.getBookingPaymentUrl(req.tenantId, BigInt(bookingId), dto.email);
+  }
+
   @Get('public/client-portal')
   @ApiOperation({ summary: 'Lookup client portal session history by booking email' })
   getPublicClientPortal(@Req() req: TenantRequest, @Query('email') email: string) {

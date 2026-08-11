@@ -4,6 +4,7 @@ import { ArrowRight, Eye, EyeOff, Loader2, Lock, Mail } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { AuthSplitShell } from '../../components/AuthSplitShell';
 import { AuthField, authInputCls } from '../../components/AuthField';
+import { api } from '../../utils/apiClient';
 
 function looksLikeVerificationPending(message: string): boolean {
   const normalized = message.toLowerCase();
@@ -18,6 +19,7 @@ export function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { login, isLoading } = useAuth();
+  const locationState = (location.state as { email?: string; returnTo?: string } | null) || null;
   const [email, setEmail] = useState((location.state as { email?: string } | null)?.email || '');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -29,7 +31,37 @@ export function LoginPage() {
     setError(null);
     try {
       const profile = await login(email, password);
-      navigate(profile.type === 'user' ? '/dashboard' : profile.type === 'platform_admin' ? '/admin' : '/portal');
+
+      if (profile.type === 'platform_admin') {
+        navigate('/admin');
+        return;
+      }
+
+      if (locationState?.returnTo) {
+        navigate(locationState.returnTo);
+        return;
+      }
+
+      if (profile.type !== 'user') {
+        const hasSavedOnboarding = !!localStorage.getItem('unclutter_onboarding_v1');
+
+        if (hasSavedOnboarding) {
+          try {
+            const summary = await api.get<{ onboardingCompleted?: boolean }>('/v1/consult/dashboard/summary');
+            if (summary.onboardingCompleted === false) {
+              navigate('/register/onboarding', { state: { resumeOnboarding: true } });
+              return;
+            }
+          } catch {
+            // If the summary fetch fails, fall through to the normal post-login route.
+          }
+        }
+
+        navigate('/portal');
+        return;
+      }
+
+      navigate('/dashboard');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed. Check your credentials.');
     }

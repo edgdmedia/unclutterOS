@@ -11,9 +11,13 @@ import { NotesModule } from './modules/notes/notes.module';
 import { BillingModule } from './modules/billing/billing.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { NotificationsModule } from './modules/notifications/notification.module';
+import { DiscountModule } from './modules/discount/discount.module';
+import { ScheduleModule } from '@nestjs/schedule';
+import { CalendarModule } from './modules/calendar/calendar.module';
 
 @Module({
   imports: [
+    ScheduleModule.forRoot(),
     ThrottlerModule.forRoot([
       {
         name: 'default',
@@ -34,6 +38,8 @@ import { NotificationsModule } from './modules/notifications/notification.module
     BillingModule,
     AdminModule,
     NotificationsModule,
+    DiscountModule,
+    CalendarModule,
   ],
   providers: [
     PrismaService,

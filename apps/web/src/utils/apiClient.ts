@@ -33,9 +33,6 @@ export const APP_BASE_URL = import.meta.env.VITE_APP_URL || DEFAULT_APP_BASE;
 
 export function getBookingUrl(slug: string): string {
   if (!slug) return 'https://os.unclutter.com.ng';
-  if (import.meta.env.DEV && typeof window !== 'undefined') {
-    return `${window.location.origin}/booking/${slug}`;
-  }
   return `https://${slug}.os.unclutter.com.ng`;
 }
 

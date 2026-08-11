@@ -215,10 +215,12 @@ model ConsultBooking {
   serviceId       BigInt
   availabilityId  BigInt
   clientProfileId BigInt
-  status          String   @default("CONFIRMED") // "PENDING", "CONFIRMED", "COMPLETED", "CANCELLED"
+  status          String    @default("PENDING_PAYMENT") // "PENDING_PAYMENT", "CONFIRMED", "COMPLETED", "CANCELLED"
+  paymentRef      String?   @unique
+  paidAt          DateTime?
   notes           String?
   videoRoomName   String?
-  createdAt       DateTime @default(now())
+  createdAt       DateTime  @default(now())
   updatedAt       DateTime?
 
   tenant          Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -233,14 +235,18 @@ model ConsultBooking {
 }
 
 model DiscountCode {
-  id              BigInt    @id @default(autoincrement())
-  tenantId        BigInt
-  code            String
-  discountPercent Int
-  maxUses         Int?
-  usedCount       Int       @default(0)
-  expiresAt       DateTime?
-  createdAt       DateTime  @default(now())
+  id                 BigInt    @id @default(autoincrement())
+  tenantId           BigInt
+  code               String
+  label              String?
+  discountType       String    @default("PERCENT") // "PERCENT" | "FIXED"
+  discountPercent    Int?      // 1–100
+  discountAmountKobo BigInt?
+  maxUses            Int?
+  usedCount          Int       @default(0)
+  expiresAt          DateTime?
+  isActive           Boolean   @default(true)
+  createdAt          DateTime  @default(now())
 
   tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 

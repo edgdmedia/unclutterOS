@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { ChevronLeft, ChevronRight, Plus, Settings, X, Calendar, Clock, User, Trash2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { ChevronLeft, ChevronRight, Plus, Settings, X, Calendar, Clock, User, Trash2, CheckCircle2 } from 'lucide-react';
 import { useBrand } from '@unclutteros/ui';
 import { api, TENANT_SLUG } from '../utils/apiClient';
 
@@ -13,6 +14,7 @@ interface Client {
 
 interface CalendarEvent {
   id: string;
+  clientId?: string;
   title: string;
   type: string;
   startsAt: string; // ISO string
@@ -35,11 +37,13 @@ export function SchedulePage({ sessions, setSessions, clients }: SchedulePagePro
 
   const [viewMode, setViewMode] = useState<'week' | 'day' | 'month'>('week');
   const [currentDate, setCurrentDate] = useState<Date>(new Date('2026-08-03T09:00:00'));
+  const navigate = useNavigate();
 
   // Modals state
   const [showNewSessionModal, setShowNewSessionModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
+  const [sessionCompleteEvent, setSessionCompleteEvent] = useState<CalendarEvent | null>(null);
 
   // Form state
   const [formClientName, setFormClientName] = useState('');
@@ -47,6 +51,7 @@ export function SchedulePage({ sessions, setSessions, clients }: SchedulePagePro
   const [formDate, setFormDate] = useState('2026-08-03');
   const [formTime, setFormTime] = useState('09:00');
   const [formDuration, setFormDuration] = useState(50);
+  const [formVideoProvider, setFormVideoProvider] = useState('DEFAULT');
   const [showAvailabilityModal, setShowAvailabilityModal] = useState(false);
   const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
   const [reviewLinkCopied, setReviewLinkCopied] = useState(false);
@@ -185,6 +190,7 @@ export function SchedulePage({ sessions, setSessions, clients }: SchedulePagePro
       await api.patch(`/v1/consult/therapist/bookings/${selectedEvent.id}/status`, { status: 'COMPLETED' });
       setSessions((current) => current.map((session) => (session.id === selectedEvent.id ? { ...session, status: 'COMPLETED' } : session)));
       setSelectedEvent((current) => (current ? { ...current, status: 'COMPLETED' } : current));
+      setSessionCompleteEvent(selectedEvent);
     } finally {
       setUpdatingStatusId(null);
     }
@@ -539,6 +545,20 @@ export function SchedulePage({ sessions, setSessions, clients }: SchedulePagePro
               </select>
             </div>
 
+            {/* Video Provider */}
+            <div className="space-y-1">
+              <label className="text-[11.5px] font-bold text-slate-500 block uppercase">Video Platform</label>
+              <select
+                value={formVideoProvider}
+                onChange={(e) => setFormVideoProvider(e.target.value)}
+                className="w-full h-11 px-3 rounded-[12px] bg-[#F8FAFC] border border-[#E2E8F0] text-xs font-semibold outline-none"
+              >
+                <option value="DEFAULT">Use my Default Profile Setting</option>
+                <option value="JITSI">Jitsi (Built-in)</option>
+                <option value="GOOGLE_MEET">Google Meet</option>
+              </select>
+            </div>
+
             {/* Action buttons */}
             <div className="flex items-center gap-3 pt-3">
               <button
@@ -725,6 +745,45 @@ export function SchedulePage({ sessions, setSessions, clients }: SchedulePagePro
             >
               Save Schedule Templates
             </button>
+          </div>
+        </div>
+      )}
+      {/* Session Complete / SOAP Note Prompt Modal */}
+      {sessionCompleteEvent && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center p-6 z-50 animate-fade-in">
+          <div className="w-full max-w-[420px] bg-white rounded-[24px] p-8 shadow-2xl space-y-6 border border-slate-200">
+            <div className="flex flex-col items-center text-center space-y-3">
+              <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center mb-2">
+                <CheckCircle2 className="h-6 w-6 text-emerald-600" />
+              </div>
+              <h3 className="text-[20px] font-bold text-[#0F172A] leading-tight">
+                Session marked complete
+              </h3>
+              <p className="text-[14px] font-medium text-slate-500 max-w-[280px]">
+                No clinical note recorded yet for this session. Write a SOAP note for <strong className="text-[#0F172A]">{sessionCompleteEvent.title}</strong>?
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 pt-2">
+              <button
+                onClick={() => setSessionCompleteEvent(null)}
+                className="h-11 rounded-[14px] bg-slate-100 text-slate-600 font-bold text-xs hover:bg-slate-200 transition-colors"
+              >
+                Remind me later
+              </button>
+              <button
+                onClick={() => {
+                  if (sessionCompleteEvent.clientId) {
+                    navigate(`/portal/clients/${sessionCompleteEvent.clientId}?tab=notes&booking=${sessionCompleteEvent.id}`);
+                  }
+                  setSessionCompleteEvent(null);
+                }}
+                className="h-11 rounded-[14px] text-white font-bold text-xs shadow-sm hover:brightness-110 transition-all cursor-pointer"
+                style={{ backgroundColor: primaryColor }}
+              >
+                Write SOAP note
+              </button>
+            </div>
           </div>
         </div>
       )}

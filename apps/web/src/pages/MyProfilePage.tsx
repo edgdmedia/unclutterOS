@@ -16,6 +16,7 @@ type ProfileRecord = {
   languages?: string[];
   bookingEmail?: string;
   notificationEmail?: string;
+  videoProvider?: string;
 };
 
 const inputCls = 'h-[46px] w-full px-[14px] rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-sm font-medium text-[#0F172A] outline-none focus:bg-white focus:border-[#94A3B8]';
@@ -94,6 +95,41 @@ export function MyProfilePage() {
                   <div><label className="block text-[11.5px] font-bold text-[#475569] mb-1.5">Years experience</label><input type="number" className={inputCls} value={profile.yearsExperience || 0} onChange={(e) => setProfile((p) => ({ ...p, yearsExperience: Number(e.target.value) || 0 }))} /></div>
                   <div><label className="block text-[11.5px] font-bold text-[#475569] mb-1.5">Modalities</label><input className={inputCls} value={(profile.modalities || []).join(', ')} onChange={(e) => setProfile((p) => ({ ...p, modalities: e.target.value.split(',').map((v) => v.trim()).filter(Boolean) }))} /></div>
                   <div><label className="block text-[11.5px] font-bold text-[#475569] mb-1.5">Languages</label><input className={inputCls} value={(profile.languages || []).join(', ')} onChange={(e) => setProfile((p) => ({ ...p, languages: e.target.value.split(',').map((v) => v.trim()).filter(Boolean) }))} /></div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-[24px] border border-[#E2E8F0] p-[24px_26px]">
+                <Eyebrow className="mb-1">PREFERENCES</Eyebrow>
+                <div className="grid grid-cols-2 gap-4 mt-4">
+                  <div>
+                    <label className="block text-[11.5px] font-bold text-[#475569] mb-1.5">Currency</label>
+                    <select className={inputCls} disabled value="NGN">
+                      <option value="NGN">NGN - Nigerian Naira</option>
+                    </select>
+                    <p className="text-[10.5px] text-[#94A3B8] mt-1.5 font-medium">Platform default.</p>
+                  </div>
+                  <div>
+                    <label className="block text-[11.5px] font-bold text-[#475569] mb-1.5">Date & Time Format</label>
+                    <select className={inputCls} disabled value="en-GB">
+                      <option value="en-GB">DD/MM/YYYY, 12-hour</option>
+                    </select>
+                    <p className="text-[10.5px] text-[#94A3B8] mt-1.5 font-medium">Platform default.</p>
+                  </div>
+                  <div>
+                    <label className="block text-[11.5px] font-bold text-[#475569] mb-1.5">Language</label>
+                    <select className={inputCls} disabled value="en">
+                      <option value="en">English (UK)</option>
+                    </select>
+                    <p className="text-[10.5px] text-[#94A3B8] mt-1.5 font-medium">More languages coming soon.</p>
+                  </div>
+                  <div>
+                    <label className="block text-[11.5px] font-bold text-[#475569] mb-1.5">Default Video Provider</label>
+                    <select className={inputCls} value={profile.videoProvider || 'JITSI'} onChange={(e) => setProfile((p) => ({ ...p, videoProvider: e.target.value }))}>
+                      <option value="JITSI">Jitsi (Built-in)</option>
+                      <option value="GOOGLE_MEET">Google Meet</option>
+                    </select>
+                    <p className="text-[10.5px] text-[#94A3B8] mt-1.5 font-medium">Automatically generate links for your sessions.</p>
+                  </div>
                 </div>
               </div>
             </>

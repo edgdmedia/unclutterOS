@@ -12,6 +12,11 @@ export class TenantMiddleware implements NestMiddleware {
   constructor(private readonly prisma: PrismaService) {}
 
   async use(req: TenantRequest, res: Response, next: NextFunction) {
+    // Explicitly ignore ambient tenant resolution for routes that strictly require body/query tenantId
+    if (req.path === '/v1/discount/validate') {
+      return next();
+    }
+
     const host = req.headers['host'] || '';
     const tenantHeaderId = req.headers['x-tenant-id'] as string;
     const tenantHeaderSlug = req.headers['x-tenant-slug'] as string;
