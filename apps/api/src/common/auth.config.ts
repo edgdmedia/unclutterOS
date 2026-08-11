@@ -21,6 +21,13 @@ function resolveSecret(name: string): string {
 export const JWT_SECRET = resolveSecret('JWT_SECRET');
 export const REFRESH_SECRET = resolveSecret('REFRESH_SECRET');
 
+// Separate secret for stateless email-verification tokens so they stay valid
+// even if the access secret rotates, and can't be forged with the session key.
+export const VERIFY_SECRET = resolveSecret('VERIFY_SECRET');
+export const VERIFY_EXPIRES_IN = process.env.VERIFY_EXPIRES_IN || '24h';
+
+export const APP_URL = process.env.APP_URL || 'https://os.unclutter.com.ng';
+
 export const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '15m';
 export const REFRESH_EXPIRES_IN = process.env.REFRESH_EXPIRES_IN || '30d';
 

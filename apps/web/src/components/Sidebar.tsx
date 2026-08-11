@@ -18,7 +18,7 @@ import {
   Settings,
   ChevronDown,
 } from 'lucide-react';
-import { useBrand } from '@unclutteros/ui';
+import { useBrand, UnclutterLockup } from '@unclutteros/ui';
 import { useAuth } from '../context/AuthContext';
 
 interface NavItem {
@@ -180,26 +180,26 @@ export function Sidebar() {
     <aside className="w-[248px] min-h-screen os-sidebar text-white flex flex-col justify-between p-[20px_14px] select-none shrink-0 border-r border-slate-800/50">
       <div className="space-y-6">
         {/* Brand Lockup */}
-        <div className="flex items-center gap-2.5 px-2 py-1 mb-4">
+        <div className="px-2 py-1 mb-4">
           {brand.logoUrl ? (
-            <img
-              src={brand.logoUrl}
-              alt={brand.name}
-              className="h-7 w-7 rounded-[9px] object-cover border border-white/10"
-            />
-          ) : (
-            <div className="h-7 w-7 rounded-[9px] bg-[#0F3A53] text-[#E3B341] flex items-center justify-center font-extrabold text-sm border border-[#E3B341]/30 shadow-xs">
-              {brand.name.charAt(0).toUpperCase()}
+            <div className="flex items-center gap-2.5">
+              <img
+                src={brand.logoUrl}
+                alt={brand.name}
+                className="h-7 w-7 rounded-[9px] object-cover border border-white/10"
+              />
+              <div className="flex items-center gap-1.5">
+                <span className="font-semibold text-[17px] tracking-[-0.02em] text-[#F8FAFC] truncate max-w-[120px]">
+                  {brand.name.toLowerCase()}
+                </span>
+                <span className="h-[18px] px-2 rounded-full text-[9px] font-extrabold tracking-[0.08em] bg-[#E3B341] text-[#0F172A] flex items-center justify-center uppercase shrink-0">
+                  OS
+                </span>
+              </div>
             </div>
+          ) : (
+            <UnclutterLockup variant="dark" markSize={32} />
           )}
-          <div className="flex items-center gap-1.5">
-            <span className="font-semibold text-[17px] tracking-[-0.02em] text-[#F8FAFC] truncate max-w-[120px]">
-              {brand.name.toLowerCase()}
-            </span>
-            <span className="h-[18px] px-2 rounded-full text-[9px] font-extrabold tracking-[0.08em] bg-[#E3B341] text-[#0F172A] flex items-center justify-center uppercase shrink-0">
-              OS
-            </span>
-          </div>
         </div>
 
         {/* Navigation Links */}

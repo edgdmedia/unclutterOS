@@ -1,9 +1,23 @@
-import { Injectable, BadRequestException, UnauthorizedException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  UnauthorizedException,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { JwtPayload } from './jwt.strategy';
-import { JWT_EXPIRES_IN, REFRESH_SECRET, REFRESH_EXPIRES_IN } from '../../common/auth.config';
+import {
+  JWT_EXPIRES_IN,
+  REFRESH_SECRET,
+  REFRESH_EXPIRES_IN,
+  VERIFY_SECRET,
+  VERIFY_EXPIRES_IN,
+  APP_URL,
+} from '../../common/auth.config';
+import { MailService } from '../mail/mail.service';
 
 const BCRYPT_ROUNDS = 12;
 
@@ -12,6 +26,7 @@ export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
+    private readonly mailService: MailService,
   ) {}
 
   async register(tenantId: bigint | undefined, dto: {
@@ -87,9 +102,6 @@ export class AuthService {
             firstName: dto.firstName ?? existingProfile.firstName,
             lastName: dto.lastName ?? existingProfile.lastName,
             type: dto.type || existingProfile.type || 'user',
-            status: 'active',
-            emailVerified: true,
-            emailVerifiedAt: new Date(),
           },
         })
       : await this.prisma.profile.create({
@@ -102,9 +114,8 @@ export class AuthService {
             lastName: dto.lastName,
             type: dto.type || 'user',
             role: isOwner ? 'OWNER' : undefined,
-            status: 'active',
-            emailVerified: true,
-            emailVerifiedAt: new Date(),
+            status: 'pending',
+            emailVerified: false,
           },
         });
 
@@ -124,16 +135,14 @@ export class AuthService {
       });
     }
 
-    const { accessToken, refreshToken } = this.generateTokens(
-      user.id,
-      profile.id,
-      targetTenantId,
-      profile.type,
-    );
+    // New accounts must verify their email before they can sign in. If a
+    // profile already existed and was verified, skip the re-verification.
+    const alreadyVerified = profile.emailVerified === true;
+    if (!alreadyVerified) {
+      await this.sendVerificationEmail(profile.email, profile.id);
+    }
 
     return {
-      accessToken,
-      refreshToken,
       profile: {
         id: profile.id.toString(),
         email: profile.email,
@@ -142,8 +151,66 @@ export class AuthService {
         lastName: profile.lastName,
         type: profile.type,
         status: profile.status,
+        emailVerified: profile.emailVerified,
       },
+      verificationRequired: !alreadyVerified,
     };
+  }
+
+  private async sendVerificationEmail(email: string, profileId: bigint) {
+    const token = await this.jwtService.signAsync(
+      { sub: profileId.toString(), purpose: 'email-verification' },
+      { secret: VERIFY_SECRET, expiresIn: VERIFY_EXPIRES_IN },
+    );
+    const verifyLink = `${APP_URL}/verify-email?token=${encodeURIComponent(token)}&email=${encodeURIComponent(email)}`;
+    await this.mailService.sendVerificationEmail(email, verifyLink);
+  }
+
+  async verifyEmail(dto: { token: string }) {
+    let payload: { sub?: string; purpose?: string };
+    try {
+      payload = await this.jwtService.verifyAsync(dto.token, { secret: VERIFY_SECRET });
+    } catch {
+      throw new BadRequestException('This verification link is invalid or has expired. Please request a new one.');
+    }
+    if (payload.purpose !== 'email-verification' || !payload.sub) {
+      throw new BadRequestException('This verification link is invalid or has expired. Please request a new one.');
+    }
+
+    const profile = await this.prisma.profile.findUnique({ where: { id: BigInt(payload.sub) } });
+    if (!profile) {
+      throw new BadRequestException('This verification link is invalid or has expired. Please request a new one.');
+    }
+
+    if (profile.emailVerified) {
+      return { success: true, alreadyVerified: true, email: profile.email };
+    }
+
+    await this.prisma.profile.update({
+      where: { id: profile.id },
+      data: {
+        emailVerified: true,
+        emailVerifiedAt: new Date(),
+        status: 'active',
+      },
+    });
+
+    return { success: true, alreadyVerified: false, email: profile.email };
+  }
+
+  async resendVerification(tenantId: bigint | undefined, dto: { email: string }) {
+    const email = dto.email.toLowerCase().trim();
+    const profile = await this.prisma.profile.findFirst({
+      where: tenantId ? { tenantId, email } : { email },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    if (!profile || profile.emailVerified) {
+      return { success: true, alreadyVerified: true };
+    }
+
+    await this.sendVerificationEmail(profile.email, profile.id);
+    return { success: true, alreadyVerified: false };
   }
 
   async loginPlatformAdmin(dto: { email: string; password: string }) {
@@ -189,6 +256,12 @@ export class AuthService {
     const passwordValid = await bcrypt.compare(dto.password, profile.user.password);
     if (!passwordValid) {
       throw new UnauthorizedException('Invalid email or password');
+    }
+
+    if (!profile.emailVerified) {
+      throw new ForbiddenException(
+        'Please verify your email address before logging in. Check your inbox for the verification link.',
+      );
     }
 
     const { accessToken, refreshToken } = this.generateTokens(

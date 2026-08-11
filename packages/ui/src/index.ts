@@ -8,3 +8,5 @@ export * from './components/MetricTile';
 export * from './components/AvatarChip';
 export * from './components/SegmentedControl';
 export * from './components/BookingLinkField';
+export * from './components/UnclutterMark';
+export * from './components/UnclutterLockup';

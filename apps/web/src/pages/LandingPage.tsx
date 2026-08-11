@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AppWindow, Check, ChevronLeft, ChevronRight, CreditCard, Play, Video } from 'lucide-react';
+import { UnclutterLockup } from '@unclutteros/ui';
 
 // ── Content ────────────────────────────────────────────────────────────────────
 
@@ -181,17 +182,12 @@ const TRUST_BADGES = ['NPA Registered', 'NDPR Compliant', 'Paystack Verified', '
 
 // ── Shared bits ────────────────────────────────────────────────────────────────
 
-function OsLogo({ pillCls, wordCls }: { pillCls?: string; wordCls?: string }) {
+// ── Shared bits ────────────────────────────────────────────────────────────────
+
+function OsLogo() {
   return (
-    <a href="#top" className="flex items-center gap-[10px] no-underline">
-      <span
-        className={`h-[30px] inline-flex items-center px-[11px] rounded-full bg-[#E3B341] text-[#0F172A] text-[13px] font-black tracking-[0.04em] ${pillCls ?? ''}`}
-      >
-        OS
-      </span>
-      <span className={`text-[#F8FAFC] text-[19px] font-semibold tracking-[-0.02em] ${wordCls ?? ''}`}>
-        unclutter<span className="font-extrabold">OS</span>
-      </span>
+    <a href="#top" className="no-underline">
+      <UnclutterLockup variant="dark" markSize={36} />
     </a>
   );
 }
@@ -241,12 +237,12 @@ function Nav() {
 
 function Hero() {
   return (
-    <section id="top" className="bg-[#0F172A] relative overflow-hidden">
+    <section id="top" className="bg-[#0F172A] relative overflow-hidden min-h-[calc(100vh-80px)] flex flex-col justify-center py-12">
       <div
         aria-hidden
         className="absolute top-[-160px] left-1/2 -translate-x-1/2 w-[1100px] h-[520px] bg-[radial-gradient(ellipse_at_center,rgba(27,83,117,0.55),rgba(15,23,42,0)_68%)] pointer-events-none"
       />
-      <div className="relative max-w-[1280px] mx-auto px-6 lg:px-10 pt-[84px] grid grid-cols-1 lg:grid-cols-[520px_1fr] gap-14 lg:gap-14 items-center">
+      <div className="relative max-w-[1280px] mx-auto px-6 lg:px-10 grid grid-cols-1 lg:grid-cols-[520px_1fr] gap-12 lg:gap-14 items-center w-full">
         <div className="flex flex-col items-start gap-[22px]">
           <div className="inline-flex items-center gap-[9px] px-[14px] py-[7px] rounded-full bg-[rgba(227,179,65,0.1)] border border-[rgba(227,179,65,0.28)]">
             <span className="w-[6px] h-[6px] rounded-full bg-[#E3B341]" />
@@ -797,7 +793,7 @@ function Footer() {
   return (
     <footer className="bg-[#0F172A] px-6 lg:px-10 pt-14 pb-10">
       <div className="max-w-[1280px] mx-auto flex flex-col gap-9">
-        <OsLogo pillCls="h-[28px] px-[10px] text-[12px]" wordCls="text-[17px]" />
+        <OsLogo />
         <div className="flex flex-wrap items-center gap-8 pt-6 border-t border-[rgba(255,255,255,0.08)]">
           {['Terms', 'Privacy (NDPR Compliance)', 'Contact', 'Support'].map((l) => (
             <a key={l} href="#top" className="text-[13.5px] text-[#94A3B8] hover:text-[#E3B341] transition-colors">

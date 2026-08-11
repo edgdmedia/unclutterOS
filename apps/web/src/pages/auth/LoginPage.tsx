@@ -138,7 +138,7 @@ export function LoginPage() {
 
       <div className="mt-6 text-[13.5px] text-[#64748B] text-center">
         Don't have a practice account yet?{' '}
-        <Link to="/signup" className="font-bold text-[#0F3A53] hover:underline">
+        <Link to="/register" className="font-bold text-[#0F3A53] hover:underline">
           Create a practice
         </Link>
       </div>

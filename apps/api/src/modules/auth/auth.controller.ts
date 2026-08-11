@@ -25,11 +25,21 @@ export class AuthController {
   async register(
     @Req() req: TenantRequest,
     @Body() dto: any,
-    @Res({ passthrough: true }) res: Response,
   ) {
     const result = await this.authService.register(req.tenantId, dto);
-    this.setSessionCookies(res, result.accessToken, result.refreshToken);
-    return { profile: result.profile };
+    return result;
+  }
+
+  @Post('verify-email')
+  @ApiOperation({ summary: 'Verify an email address using a signed token' })
+  async verifyEmail(@Body() dto: { token: string }) {
+    return this.authService.verifyEmail(dto);
+  }
+
+  @Post('resend-verification')
+  @ApiOperation({ summary: 'Re-send the email verification link' })
+  async resendVerification(@Req() req: TenantRequest, @Body() dto: { email: string }) {
+    return this.authService.resendVerification(req.tenantId, dto);
   }
 
   @Post('login')
