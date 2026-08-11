@@ -371,6 +371,7 @@ export class ConsultService {
     phone?: string;
     notes?: string;
     discountCode?: string;
+    callbackUrl?: string;
   }) {
     const serviceId = BigInt(dto.serviceId);
     const availabilityId = BigInt(dto.availabilityId);
