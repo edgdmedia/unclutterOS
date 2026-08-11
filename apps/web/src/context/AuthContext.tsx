@@ -11,6 +11,8 @@ interface AuthProfile {
   status: string;
   avatarUrl?: string;
   tenantId?: string;
+  practiceName?: string;
+  tenantSlug?: string;
   platformRole?: string;
 }
 

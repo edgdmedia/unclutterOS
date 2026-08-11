@@ -13,7 +13,20 @@
  */
 
 const API_BASE = import.meta.env.VITE_API_URL || 'https://api.os.unclutter.com.ng';
-export const TENANT_SLUG = import.meta.env.VITE_TENANT_SLUG || 'dr-smith';
+
+export function getSubdomainTenantSlug(): string | null {
+  if (typeof window === 'undefined') return null;
+  const host = window.location.hostname;
+  if (host.endsWith('.os.unclutter.com.ng')) {
+    const parts = host.split('.');
+    if (parts.length >= 4 && parts[0] !== 'os' && parts[0] !== 'www') {
+      return parts[0];
+    }
+  }
+  return null;
+}
+
+export const TENANT_SLUG = import.meta.env.VITE_TENANT_SLUG || getSubdomainTenantSlug() || '';
 export const APP_BASE_URL = import.meta.env.VITE_APP_URL || 'https://os.unclutter.com.ng';
 export function getBookingUrl(slug: string): string {
   return `${APP_BASE_URL}/booking/${slug}`;

@@ -5,7 +5,7 @@ import useSWR from 'swr';
 import { Sidebar } from './components/Sidebar';
 import { BrandProvider } from '@unclutteros/ui';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import { api } from './utils/apiClient';
+import { api, getSubdomainTenantSlug } from './utils/apiClient';
 
 // ── Lazy-loaded pages (code-split per route) ──────────────────────────────────
 const DashboardPage = lazy(() => import('./pages/DashboardPage').then((m) => ({ default: m.DashboardPage })));
@@ -343,6 +343,13 @@ function AppLayout() {
   const resolvedSessions = useMemo(() => sessions ?? [], [sessions]);
   const resolvedStaff = useMemo(() => staff ?? [], [staff]);
 
+  const practiceBrand = useMemo(() => ({
+    name: profile?.practiceName || (profile?.firstName ? `${profile.firstName}'s Practice` : 'UnclutterOS Practice'),
+    slug: profile?.tenantSlug || getSubdomainTenantSlug() || 'practice',
+    primaryColor,
+    secondaryColor,
+  }), [profile, primaryColor, secondaryColor]);
+
   // Platform admin console — own shell, no tenant branding.
   if (isAdminRoute) {
     return <AdminShell />;
@@ -366,7 +373,7 @@ function AppLayout() {
 
   if (isFullscreen) {
     return (
-      <BrandProvider brand={{ name: 'Dr. Jane Smith Therapy', slug: 'dr-smith', primaryColor, secondaryColor }}>
+      <BrandProvider brand={practiceBrand}>
         <Suspense fallback={<PageFallback />}>
           <Routes>
             <Route path="/session/:id/prep" element={<SessionPrepPage />} />
@@ -412,7 +419,7 @@ function AppLayout() {
   }
 
   return (
-    <BrandProvider brand={{ name: 'Dr. Jane Smith Therapy', slug: 'dr-smith', primaryColor, secondaryColor }}>
+    <BrandProvider brand={practiceBrand}>
       <div className="flex min-h-screen bg-[#F8FAFC]">
         <Sidebar />
         <div className="flex-1 flex flex-col min-w-0">

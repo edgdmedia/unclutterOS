@@ -147,7 +147,9 @@ export function DashboardPage(props: DashboardPageProps) {
       <header className="h-[80px] bg-white border-b border-[#E2E8F0] px-[26px] flex items-center justify-between gap-5 shrink-0">
         <div>
           <span className="os-eyebrow block">PRACTICE OVERVIEW</span>
-          <h1 className="text-[20px] font-bold tracking-[-0.02em] text-[#0F172A]">Good morning, Dr. Smith</h1>
+          <h1 className="text-[20px] font-bold tracking-[-0.02em] text-[#0F172A]">
+            Good morning, {profileName || 'Doctor'}
+          </h1>
         </div>
 
         <div className="flex items-center gap-3 ml-auto">

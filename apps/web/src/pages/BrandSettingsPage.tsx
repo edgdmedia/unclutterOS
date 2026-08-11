@@ -23,7 +23,7 @@ type BrandRecord = {
 export function BrandSettingsPage(props: BrandSettingsPageProps) {
   const primaryColor = props.primaryColor || '#0F3A53';
   const secondaryColor = props.secondaryColor || '#E3B341';
-  const [practiceName, setPracticeName] = useState('Dr. Jane Smith Therapy');
+  const [practiceName, setPracticeName] = useState('Your Practice Name');
   const [customDomain, setCustomDomain] = useState('');
   const [publicEmail, setPublicEmail] = useState('');
   const [previewTab, setPreviewTab] = useState<'booking' | 'confirmed'>('booking');
@@ -31,7 +31,9 @@ export function BrandSettingsPage(props: BrandSettingsPageProps) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const bookingUrl = `https://unclutteros.com/booking/${TENANT_SLUG}`;
+  const bookingUrl = customDomain
+    ? (customDomain.startsWith('http') ? customDomain : `https://${customDomain}`)
+    : `https://${TENANT_SLUG || 'practice'}.os.unclutter.com.ng`;
 
   useEffect(() => {
     let cancelled = false;
@@ -40,7 +42,7 @@ export function BrandSettingsPage(props: BrandSettingsPageProps) {
       try {
         const brand = await api.get<BrandRecord>('/v1/tenant/brand');
         if (cancelled) return;
-        setPracticeName(brand.name || 'Dr. Jane Smith Therapy');
+        setPracticeName(brand.name || 'Your Practice Name');
         setCustomDomain(brand.customDomain || '');
         setPublicEmail(brand.publicEmail || '');
         if (brand.primaryColor) props.setPrimaryColor?.(brand.primaryColor);
