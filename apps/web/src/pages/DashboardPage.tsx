@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Copy, Check, Bell, Link2, Calendar, FileText, Video, Upload, Globe, Palette, Sparkles, TrendingUp, CheckCircle2 } from 'lucide-react';
 import { Button } from '@unclutteros/ui';
+import { useAuth } from '../context/AuthContext';
 import { api, TENANT_SLUG } from '../utils/apiClient';
 
 interface DashboardPageProps {
@@ -17,15 +18,18 @@ interface DashboardPageProps {
 
 export function DashboardPage(props: DashboardPageProps) {
   const navigate = useNavigate();
+  const { profile: authUser } = useAuth();
+
+  const userFullName = `${authUser?.firstName || ''} ${authUser?.lastName || ''}`.trim();
+  const [profileName, setProfileName] = useState(userFullName || authUser?.email || '');
+  const [profileTitle, setProfileTitle] = useState('Practitioner');
+  const [profileAvatar, setProfileAvatar] = useState<string | null>(null);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [copied, setCopied] = useState(false);
   const [practiceActive, setPracticeActive] = useState(props.tenantStatus === 'ACTIVE');
   const primaryColor = props.primaryColor || '#0F3A53';
   const secondaryColor = props.secondaryColor || '#E3B341';
   const [customDomain, setCustomDomain] = useState('');
-  const [profileName, setProfileName] = useState('Dr. Adaeze Okonkwo');
-  const [profileTitle, setProfileTitle] = useState('Clinical Psychologist');
-  const [profileAvatar, setProfileAvatar] = useState<string | null>(null);
-  const [unreadCount, setUnreadCount] = useState(0);
 
   const [summary, setSummary] = useState<{
     revenueThisMonthNaira: number;
@@ -54,37 +58,46 @@ export function DashboardPage(props: DashboardPageProps) {
     let cancelled = false;
 
     async function loadDashboardMeta() {
-      try {
-        const [brand, profile, notifications, dashSummary] = await Promise.all([
-          api.get<{ customDomain?: string | null }>('/v1/tenant/brand'),
-          api.get<{ firstName?: string; lastName?: string; specialty?: string; avatarUrl?: string | null }>('/v1/consult/therapist/profile'),
-          api.get<Array<{ unread: boolean }>>('/v1/tenant/notifications'),
-          api.get<{
-            revenueThisMonthNaira: number;
-            scheduledSessionsCount: number;
-            totalClientsCount: number;
-            activeRosterCount: number;
-            onboardingCompleted?: boolean;
-            hasAvailability?: boolean;
-            hasService?: boolean;
-            hasPayout?: boolean;
-            upcomingSessions: any[];
-          }>('/v1/consult/dashboard/summary'),
-        ]);
-        if (cancelled) return;
-        setCustomDomain(brand.customDomain || '');
-        setProfileName(`${profile.firstName || ''} ${profile.lastName || ''}`.trim() || 'Dr. Adaeze Okonkwo');
-        setProfileTitle(profile.specialty || 'Clinical Psychologist');
-        setProfileAvatar(profile.avatarUrl || null);
-        setUnreadCount(notifications.filter((item) => item.unread).length);
-        if (dashSummary) {
-          setSummary(dashSummary);
-          if (dashSummary.onboardingCompleted === false) {
-            navigate('/onboarding');
-          }
+      const [brandRes, profileRes, notificationsRes, dashSummaryRes] = await Promise.allSettled([
+        api.get<{ customDomain?: string | null }>('/v1/tenant/brand'),
+        api.get<{ firstName?: string; lastName?: string; specialty?: string; avatarUrl?: string | null }>('/v1/consult/therapist/profile'),
+        api.get<Array<{ unread: boolean }>>('/v1/tenant/notifications'),
+        api.get<{
+          revenueThisMonthNaira: number;
+          scheduledSessionsCount: number;
+          totalClientsCount: number;
+          activeRosterCount: number;
+          onboardingCompleted?: boolean;
+          hasAvailability?: boolean;
+          hasService?: boolean;
+          hasPayout?: boolean;
+          upcomingSessions: any[];
+        }>('/v1/consult/dashboard/summary'),
+      ]);
+
+      if (cancelled) return;
+
+      if (brandRes.status === 'fulfilled') {
+        setCustomDomain(brandRes.value.customDomain || '');
+      }
+
+      if (profileRes.status === 'fulfilled') {
+        const p = profileRes.value;
+        const fetchedName = `${p.firstName || ''} ${p.lastName || ''}`.trim();
+        if (fetchedName) setProfileName(fetchedName);
+        if (p.specialty) setProfileTitle(p.specialty);
+        if (p.avatarUrl) setProfileAvatar(p.avatarUrl);
+      }
+
+      if (notificationsRes.status === 'fulfilled' && Array.isArray(notificationsRes.value)) {
+        setUnreadCount(notificationsRes.value.filter((item) => item.unread).length);
+      }
+
+      if (dashSummaryRes.status === 'fulfilled' && dashSummaryRes.value) {
+        setSummary(dashSummaryRes.value);
+        if (dashSummaryRes.value.onboardingCompleted === false) {
+          navigate('/onboarding');
         }
-      } catch {
-        // Best-effort only; the rest of the dashboard is already derived from live props.
       }
     }
 
@@ -153,7 +166,7 @@ export function DashboardPage(props: DashboardPageProps) {
         <div>
           <span className="os-eyebrow block">PRACTICE OVERVIEW</span>
           <h1 className="text-[20px] font-bold tracking-[-0.02em] text-[#0F172A]">
-            Good morning, {profileName || 'Doctor'}
+            Good morning{profileName ? `, ${profileName}` : ''}
           </h1>
         </div>
 

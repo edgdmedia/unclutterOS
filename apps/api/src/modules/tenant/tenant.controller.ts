@@ -59,61 +59,67 @@ export class TenantController {
   }
 
   @Get('notifications')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Get tenant inbox notifications derived from live activity' })
-  getNotifications(@Req() req: TenantRequest) {
-    if (!req.tenantId) {
-      throw new Error('Tenant context required');
-    }
-    return this.tenantService.getNotifications(req.tenantId);
+  getNotifications(@Req() req: any) {
+    return this.tenantService.getNotifications(authenticatedTenantId(req));
   }
 
   // ── Group Clinic Staff Management Endpoints ───────────────────────────────
 
   @Get('staff')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'List practice team members & receptionists' })
-  getStaff(@Req() req: TenantRequest) {
-    if (!req.tenantId) throw new Error('Tenant context required');
-    return this.tenantService.getClinicStaff(req.tenantId);
+  getStaff(@Req() req: any) {
+    return this.tenantService.getClinicStaff(authenticatedTenantId(req));
   }
 
   @Post('staff/invite')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Invite a new therapist, receptionist, or admin staff member' })
-  inviteStaff(@Req() req: TenantRequest, @Body() dto: { email: string; role: 'ADMIN' | 'RECEPTIONIST' | 'THERAPIST' }) {
-    if (!req.tenantId) throw new Error('Tenant context required');
-    return this.tenantService.inviteStaffMember(req.tenantId, dto);
+  inviteStaff(@Req() req: any, @Body() dto: { email: string; role: 'ADMIN' | 'RECEPTIONIST' | 'THERAPIST' }) {
+    return this.tenantService.inviteStaffMember(authenticatedTenantId(req), dto);
   }
 
   @Patch('staff/:profileId/role')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Update staff member role & permissions' })
   updateRole(
-    @Req() req: TenantRequest,
+    @Req() req: any,
     @Param('profileId') profileId: string,
     @Body() dto: { role: 'OWNER' | 'ADMIN' | 'RECEPTIONIST' | 'THERAPIST' },
   ) {
-    if (!req.tenantId) throw new Error('Tenant context required');
-    return this.tenantService.updateStaffRole(req.tenantId, BigInt(profileId), dto.role);
+    return this.tenantService.updateStaffRole(authenticatedTenantId(req), BigInt(profileId), dto.role);
   }
 
   // ── Client (Patient) Endpoints ────────────────────────────────────────────
 
   @Get('clients')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'List all client (patient) profiles for the practice' })
-  getClients(@Req() req: TenantRequest) {
-    if (!req.tenantId) throw new Error('Tenant context required');
-    return this.tenantService.getClients(req.tenantId);
+  getClients(@Req() req: any) {
+    return this.tenantService.getClients(authenticatedTenantId(req));
   }
 
   @Get('clients/:profileId')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Get a single client with bookings, notes, and intake' })
-  getClientById(@Req() req: TenantRequest, @Param('profileId') profileId: string) {
-    if (!req.tenantId) throw new Error('Tenant context required');
-    return this.tenantService.getClientById(req.tenantId, BigInt(profileId));
+  getClientById(@Req() req: any, @Param('profileId') profileId: string) {
+    return this.tenantService.getClientById(authenticatedTenantId(req), BigInt(profileId));
   }
 
   @Post('clients')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Create a new client (patient) profile' })
   createClient(
-    @Req() req: TenantRequest,
+    @Req() req: any,
     @Body() dto: {
       firstName: string;
       lastName?: string;
@@ -123,7 +129,6 @@ export class TenantController {
       emergency?: string;
     },
   ) {
-    if (!req.tenantId) throw new Error('Tenant context required');
-    return this.tenantService.createClient(req.tenantId, dto);
+    return this.tenantService.createClient(authenticatedTenantId(req), dto);
   }
 }
