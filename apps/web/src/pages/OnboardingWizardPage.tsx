@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Check, Copy, ArrowRight, ArrowLeft, Loader2, Sparkles, Building2, Calendar, ShieldCheck, ExternalLink } from 'lucide-react';
+import { Check, Copy, ArrowRight, ArrowLeft, Loader2, Sparkles, Building2, Calendar, ShieldCheck, ExternalLink, Palette, Image, Mail, Phone, MapPin, Info, Globe } from 'lucide-react';
 import { UnclutterLockup } from '@unclutteros/ui';
 import { useAuth } from '../context/AuthContext';
 import { api, getBookingUrl } from '../utils/apiClient';
@@ -27,6 +27,14 @@ const DAY_LABELS = [
 
 const CANCELLATION_OPTIONS = [12, 24, 48, 72];
 
+const BRAND_PALETTES = [
+  { name: 'Navy & Gold', primary: '#0F3A53', secondary: '#E3B341' },
+  { name: 'Emerald Health', primary: '#15803D', secondary: '#F59E0B' },
+  { name: 'Teal Balance', primary: '#0E7490', secondary: '#E3B341' },
+  { name: 'Royal Violet', primary: '#7C3AED', secondary: '#EC4899' },
+  { name: 'Signal Indigo', primary: '#1E1B4B', secondary: '#3B82F6' },
+];
+
 function slugify(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 }
@@ -49,7 +57,7 @@ export function OnboardingWizardPage() {
 
   const steps = useMemo<Array<{ key: StepKey; label: string; desc: string }>>(() => {
     const list: Array<{ key: StepKey; label: string; desc: string }> = [
-      { key: 'brand', label: 'Practice Identity', desc: 'Name & booking URL' },
+      { key: 'brand', label: 'Practice Identity', desc: 'Brand colors, logo & handle' },
     ];
     if (isTherapist) {
       list.push({ key: 'availability', label: 'Availability & Rates', desc: 'Working hours & pricing' });
@@ -69,21 +77,24 @@ export function OnboardingWizardPage() {
 
   const [practiceName, setPracticeName] = useState(initialPracticeName);
   const [slug, setSlug] = useState(initialSlug);
-  const [daysOn, setDaysOn] = useState<boolean[]>([true, true, true, true, true, false, false]);
-  const [rate, setRate] = useState('35,000');
-  const [cancellationHours, setCancellationHours] = useState(24);
+  const [primaryColor, setPrimaryColor] = useState('#0F3A53');
+  const [secondaryColor, setSecondaryColor] = useState('#E3B341');
+  const [logoUrl, setLogoUrl] = useState('');
+  const [welcomeMessage, setWelcomeMessage] = useState('');
   const [publicEmail, setPublicEmail] = useState(signupState.email || authUser?.email || '');
   const [publicPhone, setPublicPhone] = useState('');
   const [city, setCity] = useState('');
   const [address, setAddress] = useState('');
   const [category, setCategory] = useState('');
+
+  const [daysOn, setDaysOn] = useState<boolean[]>([true, true, true, true, true, false, false]);
+  const [rate, setRate] = useState('35,000');
+  const [cancellationHours, setCancellationHours] = useState(24);
   const [copied, setCopied] = useState(false);
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const primaryColor = '#0F3A53';
-  const secondaryColor = '#E3B341';
   const bookingUrl = useMemo(() => getBookingUrl(slug), [slug]);
 
   useEffect(() => {
@@ -93,6 +104,10 @@ export function OnboardingWizardPage() {
         const brand = await api.get<{
           name?: string;
           slug?: string;
+          primaryColor?: string;
+          secondaryColor?: string;
+          logoUrl?: string;
+          welcomeMessage?: string;
           publicEmail?: string;
           publicPhone?: string;
           city?: string;
@@ -103,6 +118,10 @@ export function OnboardingWizardPage() {
         if (cancelled) return;
         if (brand.name) setPracticeName(brand.name);
         if (brand.slug) setSlug(brand.slug);
+        if (brand.primaryColor) setPrimaryColor(brand.primaryColor);
+        if (brand.secondaryColor) setSecondaryColor(brand.secondaryColor);
+        if (brand.logoUrl) setLogoUrl(brand.logoUrl);
+        if (brand.welcomeMessage) setWelcomeMessage(brand.welcomeMessage);
         if (brand.publicEmail) setPublicEmail(brand.publicEmail);
         if (brand.publicPhone) setPublicPhone(brand.publicPhone);
         if (brand.city) setCity(brand.city);
@@ -129,7 +148,16 @@ export function OnboardingWizardPage() {
     setSaving(true);
     setError(null);
     try {
-      await api.patch('/v1/tenant/brand', { name: practiceName.trim(), slug: slugify(slug) });
+      await api.patch('/v1/tenant/brand', {
+        name: practiceName.trim(),
+        slug: slugify(slug),
+        primaryColor,
+        secondaryColor,
+        logoUrl: logoUrl.trim() || undefined,
+        welcomeMessage: welcomeMessage.trim() || undefined,
+        publicEmail: publicEmail.trim() || undefined,
+        publicPhone: publicPhone.trim() || undefined,
+      });
       return true;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to save your practice brand.');
@@ -210,6 +238,13 @@ export function OnboardingWizardPage() {
   const rateValue = Number(rate.replace(/[^0-9]/g, '') || 0);
   const monthlyEstimate = weeklySlots * rateValue * 4;
 
+  const initials = (practiceName || 'Okonkwo Therapy')
+    .split(' ')
+    .map((n) => n[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
+
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-[#0F172A] font-outfit flex flex-col">
       {/* Top Navigation Header */}
@@ -233,15 +268,18 @@ export function OnboardingWizardPage() {
 
       {/* Main Centered Content Canvas */}
       <div className="flex-1 flex flex-col items-center justify-center p-6 md:p-10">
-        <div className="w-full max-w-[960px] bg-white rounded-[28px] border border-[#E2E8F0] shadow-[0_24px_64px_rgba(15,23,42,.07)] overflow-hidden flex flex-col min-h-[580px]">
+        <div className="w-full max-w-[1040px] bg-white rounded-[28px] border border-[#E2E8F0] shadow-[0_24px_64px_rgba(15,23,42,.07)] overflow-hidden flex flex-col min-h-[620px]">
           
           {/* Step Stepper Navigation Bar */}
           <div className="bg-[#F8FAFC] border-b border-[#E2E8F0] px-8 py-5">
-            <div className="flex items-center justify-between relative max-w-[760px] mx-auto">
+            <div className="flex items-center justify-between relative max-w-[780px] mx-auto">
               <div className="absolute top-5 left-6 right-6 h-[2.5px] bg-[#E2E8F0] -z-0">
                 <div
-                  className="h-full bg-[#E3B341] transition-all duration-300 rounded-full"
-                  style={{ width: steps.length > 1 ? `${(stepIndex / (steps.length - 1)) * 100}%` : '100%' }}
+                  className="h-full transition-all duration-300 rounded-full"
+                  style={{
+                    backgroundColor: secondaryColor,
+                    width: steps.length > 1 ? `${(stepIndex / (steps.length - 1)) * 100}%` : '100%',
+                  }}
                 />
               </div>
 
@@ -250,11 +288,14 @@ export function OnboardingWizardPage() {
                   <div
                     className={`h-10 w-10 rounded-[14px] font-extrabold text-sm flex items-center justify-center border-2 transition-all shadow-xs ${
                       stepIndex === idx
-                        ? 'bg-[#0F3A53] text-white border-[#0F3A53] shadow-md scale-105'
+                        ? 'text-white border-transparent shadow-md scale-105'
                         : stepIndex > idx
-                        ? 'bg-[#E3B341] text-[#0F172A] border-[#E3B341]'
+                        ? 'text-[#0F172A] border-transparent'
                         : 'bg-white text-[#94A3B8] border-[#E2E8F0]'
                     }`}
+                    style={{
+                      backgroundColor: stepIndex === idx ? primaryColor : stepIndex > idx ? secondaryColor : '#FFFFFF',
+                    }}
                   >
                     {stepIndex > idx ? <Check className="h-5 w-5 stroke-[2.5]" /> : idx + 1}
                   </div>
@@ -274,35 +315,49 @@ export function OnboardingWizardPage() {
           {/* Wizard Step Body */}
           <div className="p-8 sm:p-10 flex-1 flex flex-col justify-between">
             {stepKey === 'brand' && (
-              <div className="grid grid-cols-12 gap-8 items-center flex-1">
+              <div className="grid grid-cols-12 gap-8 items-start flex-1">
                 <div className="col-span-12 md:col-span-7 space-y-6">
                   <div>
                     <span className="os-eyebrow block mb-1">STEP 01 OF {steps.length}</span>
                     <h2 className="text-[28px] font-bold tracking-tight text-[#0F172A] leading-tight">
-                      Let's set up your practice brand.
+                      Customize your practice brand.
                     </h2>
-                    <p className="text-xs sm:text-sm text-[#64748B] font-medium leading-relaxed mt-1.5">
-                      Clients interact directly with your practice identity. UnclutterOS operates seamlessly in the background.
+                    <p className="text-xs sm:text-sm text-[#64748B] font-medium leading-relaxed mt-1">
+                      Set up your official brand name, logo, custom color palette, and public contact details.
                     </p>
                   </div>
 
                   <div className="space-y-4">
-                    <div className="space-y-1.5">
-                      <label className="text-[12px] font-bold text-[#475569] block">
-                        {isPractice ? 'Clinic / Practice Name' : 'Practice Name'}
-                      </label>
-                      <input
-                        type="text"
-                        value={practiceName}
-                        onChange={(e) => setPracticeName(e.target.value)}
-                        placeholder="e.g. Okonkwo Therapy Practice"
-                        className="w-full h-[50px] px-4 rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-[14px] font-semibold text-[#0F172A] outline-none focus:bg-white focus:border-[#0F3A53] transition-all placeholder:text-[#CBD5E1]"
-                      />
+                    {/* Practice Name & Handle */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <label className="text-[12px] font-bold text-[#475569] block">
+                          {isPractice ? 'Clinic / Practice Name' : 'Practice Name'}
+                        </label>
+                        <input
+                          type="text"
+                          value={practiceName}
+                          onChange={(e) => setPracticeName(e.target.value)}
+                          placeholder="e.g. Okonkwo Therapy Practice"
+                          className="w-full h-[48px] px-4 rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-[14px] font-semibold text-[#0F172A] outline-none focus:bg-white focus:border-[#0F3A53] transition-all placeholder:text-[#CBD5E1]"
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-[12px] font-bold text-[#475569] block">Category / Specialty</label>
+                        <input
+                          type="text"
+                          value={category}
+                          onChange={(e) => setCategory(e.target.value)}
+                          placeholder="e.g. Clinical Psychology"
+                          className="w-full h-[48px] px-4 rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-[14px] font-semibold text-[#0F172A] outline-none focus:bg-white focus:border-[#0F3A53] transition-all placeholder:text-[#CBD5E1]"
+                        />
+                      </div>
                     </div>
 
                     <div className="space-y-1.5">
-                      <label className="text-[12px] font-bold text-[#475569] block">Booking Link Handle</label>
-                      <div className="h-[50px] bg-[#F8FAFC] border border-[#E2E8F0] rounded-[14px] px-3.5 flex items-center gap-1.5 focus-within:bg-white focus-within:border-[#0F3A53] transition-all">
+                      <label className="text-[12px] font-bold text-[#475569] block">Subdomain Handle</label>
+                      <div className="h-[48px] bg-[#F8FAFC] border border-[#E2E8F0] rounded-[14px] px-3.5 flex items-center gap-1.5 focus-within:bg-white focus-within:border-[#0F3A53] transition-all">
                         <span className="text-xs font-semibold text-[#64748B] shrink-0">https://</span>
                         <input
                           type="text"
@@ -312,10 +367,100 @@ export function OnboardingWizardPage() {
                           className="flex-1 bg-transparent text-xs font-bold text-[#0F172A] outline-none placeholder:text-[#CBD5E1]"
                         />
                         <span className="text-xs font-semibold text-[#64748B] shrink-0">.os.unclutter.com.ng</span>
-                        <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200 shrink-0">
+                        <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 shrink-0">
                           AVAILABLE
                         </span>
                       </div>
+                    </div>
+
+                    {/* Brand Colors */}
+                    <div className="space-y-2 pt-1">
+                      <label className="text-[12px] font-bold text-[#475569] flex items-center justify-between">
+                        <span>Brand Color Palette</span>
+                        <span className="text-[10.5px] text-[#64748B] font-normal">Select a preset or custom hex</span>
+                      </label>
+                      <div className="flex flex-wrap gap-2">
+                        {BRAND_PALETTES.map((p) => (
+                          <button
+                            key={p.name}
+                            type="button"
+                            onClick={() => {
+                              setPrimaryColor(p.primary);
+                              setSecondaryColor(p.secondary);
+                            }}
+                            className={`h-10 px-3 rounded-[12px] text-xs font-bold flex items-center gap-2 border cursor-pointer transition-all ${
+                              primaryColor === p.primary && secondaryColor === p.secondary
+                                ? 'bg-white border-[#0F172A] shadow-xs ring-2 ring-[#0F172A]/20'
+                                : 'bg-[#F8FAFC] border-[#E2E8F0] hover:bg-slate-100'
+                            }`}
+                          >
+                            <span className="h-4 w-4 rounded-full flex overflow-hidden border border-black/10 shrink-0">
+                              <span className="w-1/2 h-full" style={{ backgroundColor: p.primary }} />
+                              <span className="w-1/2 h-full" style={{ backgroundColor: p.secondary }} />
+                            </span>
+                            <span className="text-[#0F172A]">{p.name}</span>
+                          </button>
+                        ))}
+                      </div>
+                      <div className="flex items-center gap-3 pt-1">
+                        <div className="flex items-center gap-2 bg-[#F8FAFC] border border-[#E2E8F0] rounded-[12px] px-3 py-1.5">
+                          <span className="text-[11px] font-bold text-[#475569]">Primary:</span>
+                          <input
+                            type="color"
+                            value={primaryColor}
+                            onChange={(e) => setPrimaryColor(e.target.value)}
+                            className="h-6 w-6 rounded cursor-pointer border-0 bg-transparent"
+                          />
+                          <span className="text-xs font-mono font-bold text-[#0F172A]">{primaryColor}</span>
+                        </div>
+                        <div className="flex items-center gap-2 bg-[#F8FAFC] border border-[#E2E8F0] rounded-[12px] px-3 py-1.5">
+                          <span className="text-[11px] font-bold text-[#475569]">Accent:</span>
+                          <input
+                            type="color"
+                            value={secondaryColor}
+                            onChange={(e) => setSecondaryColor(e.target.value)}
+                            className="h-6 w-6 rounded cursor-pointer border-0 bg-transparent"
+                          />
+                          <span className="text-xs font-mono font-bold text-[#0F172A]">{secondaryColor}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Logo & Contact Info */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+                      <div className="space-y-1.5">
+                        <label className="text-[12px] font-bold text-[#475569] block">Public Email</label>
+                        <input
+                          type="email"
+                          value={publicEmail}
+                          onChange={(e) => setPublicEmail(e.target.value)}
+                          placeholder="hello@okonkwo.ng"
+                          className="w-full h-[46px] px-3.5 rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-[13.5px] font-semibold text-[#0F172A] outline-none focus:bg-white focus:border-[#0F3A53] transition-all placeholder:text-[#CBD5E1]"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[12px] font-bold text-[#475569] block">Public Phone</label>
+                        <input
+                          type="tel"
+                          value={publicPhone}
+                          onChange={(e) => setPublicPhone(e.target.value)}
+                          placeholder="+234 803 123 4567"
+                          className="w-full h-[46px] px-3.5 rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-[13.5px] font-semibold text-[#0F172A] outline-none focus:bg-white focus:border-[#0F3A53] transition-all placeholder:text-[#CBD5E1]"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-[12px] font-bold text-[#475569] block">
+                        About Practice / Welcome Tagline <span className="text-[#94A3B8] font-normal">(optional)</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={welcomeMessage}
+                        onChange={(e) => setWelcomeMessage(e.target.value)}
+                        placeholder="e.g. Evidence-based individual & couples psychotherapy in Lagos."
+                        className="w-full h-[46px] px-3.5 rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-[13.5px] font-semibold text-[#0F172A] outline-none focus:bg-white focus:border-[#0F3A53] transition-all placeholder:text-[#CBD5E1]"
+                      />
                     </div>
                   </div>
 
@@ -326,26 +471,75 @@ export function OnboardingWizardPage() {
                   )}
                 </div>
 
-                {/* Right Interactive Brand Card Mockup */}
-                <div className="col-span-12 md:col-span-5 p-6 rounded-[24px] bg-[#F8FAFC] border border-[#E2E8F0] space-y-4">
-                  <div className="text-[10px] font-black tracking-widest text-[#94A3B8] uppercase">LIVE PREVIEW</div>
-                  <div className="p-5 rounded-[20px] text-white space-y-3 shadow-md" style={{ backgroundColor: primaryColor }}>
-                    <div className="flex items-center justify-between">
-                      <span className="text-[9px] font-black tracking-widest text-[#E3B341] uppercase">CLINICAL PRACTICE</span>
-                      <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                {/* Right Live Interactive Client Booking Header Mockup */}
+                <div className="col-span-12 md:col-span-5 p-6 rounded-[24px] bg-[#F8FAFC] border border-[#E2E8F0] space-y-4 sticky top-4">
+                  <div className="text-[10px] font-black tracking-widest text-[#94A3B8] uppercase flex items-center justify-between">
+                    <span>LIVE BRANDING PREVIEW</span>
+                    <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                  </div>
+
+                  <div className="rounded-[22px] overflow-hidden border border-slate-200 bg-white shadow-lg">
+                    {/* Header Banner */}
+                    <div
+                      className="p-5 border-b space-y-3"
+                      style={{
+                        background: `linear-gradient(135deg, ${primaryColor}1F, ${secondaryColor}2F)`,
+                        borderColor: `${primaryColor}22`,
+                      }}
+                    >
+                      <div className="flex items-center gap-4">
+                        {logoUrl ? (
+                          <img
+                            src={logoUrl}
+                            alt="Logo"
+                            className="h-[52px] w-[52px] rounded-[16px] object-cover border border-white shadow-xs"
+                          />
+                        ) : (
+                          <div
+                            className="h-[52px] w-[52px] rounded-[16px] bg-white shadow-xs flex items-center justify-center font-extrabold text-lg border border-slate-100 shrink-0"
+                            style={{ color: primaryColor }}
+                          >
+                            {initials}
+                          </div>
+                        )}
+                        <div className="space-y-0.5 flex-1 min-w-0">
+                          <span className="text-[9.5px] font-black tracking-widest uppercase block" style={{ color: primaryColor }}>
+                            {practiceName || 'Your Practice'}
+                          </span>
+                          <h4 className="text-base font-extrabold tracking-tight text-[#0F172A] truncate">
+                            Book a session
+                          </h4>
+                          <span
+                            className="h-[18px] px-2 rounded-full text-[9px] font-bold uppercase inline-flex items-center"
+                            style={{ backgroundColor: `${secondaryColor}2A`, color: '#8A6512' }}
+                          >
+                            {category || 'CLINICAL PRACTICE'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {welcomeMessage && (
+                        <p className="text-[11px] text-[#475569] font-medium leading-normal line-clamp-2 border-t border-black/5 pt-2">
+                          {welcomeMessage}
+                        </p>
+                      )}
                     </div>
-                    <div>
-                      <h4 className="text-base font-extrabold tracking-tight">{practiceName || 'Okonkwo Therapy Practice'}</h4>
-                      <p className="text-[11px] text-white/80 font-medium">https://{slug || 'handle'}.os.unclutter.com.ng</p>
+
+                    {/* Booking Card Content Mock */}
+                    <div className="p-4 bg-[#FAF9F5] space-y-2.5">
+                      <div className="h-10 bg-white rounded-[12px] border border-slate-200/80 px-3.5 flex items-center justify-between text-xs font-semibold text-[#0F172A]">
+                        <span>Individual Therapy</span>
+                        <span className="font-bold" style={{ color: primaryColor }}>₦35,000</span>
+                      </div>
+                      <div className="h-9 rounded-full text-xs font-bold flex items-center justify-center text-white shadow-xs" style={{ backgroundColor: primaryColor }}>
+                        Select date &amp; WAT time
+                      </div>
                     </div>
                   </div>
-                  <div className="space-y-2">
-                    <div className="h-10 bg-white rounded-[14px] border border-[#E2E8F0] flex items-center px-3.5 text-xs font-semibold text-[#64748B]">
-                      <span>1. Individual Psychotherapy (50 min)</span>
-                    </div>
-                    <div className="h-10 bg-white rounded-[14px] border border-[#E2E8F0] flex items-center px-3.5 text-xs font-semibold text-[#64748B]">
-                      <span>2. Select date &amp; WAT time slot</span>
-                    </div>
+
+                  <div className="text-[11px] text-[#64748B] font-medium flex items-center gap-1.5 px-1">
+                    <Globe className="h-3.5 w-3.5 text-[#94A3B8]" />
+                    <span className="truncate">https://{slug || 'handle'}.os.unclutter.com.ng</span>
                   </div>
                 </div>
               </div>
@@ -373,9 +567,12 @@ export function OnboardingWizardPage() {
                             onClick={() => setDaysOn((prev) => prev.map((on, idx) => (idx === i ? !on : on)))}
                             className={`h-[48px] rounded-[14px] font-bold text-xs flex flex-col items-center justify-center transition-all cursor-pointer border ${
                               daysOn[i]
-                                ? 'bg-[#0F3A53] text-white border-[#0F3A53] shadow-xs'
+                                ? 'text-white border-transparent shadow-xs'
                                 : 'bg-[#F8FAFC] text-[#94A3B8] border-[#E2E8F0] hover:bg-slate-100'
                             }`}
+                            style={{
+                              backgroundColor: daysOn[i] ? primaryColor : undefined,
+                            }}
                           >
                             <span className="text-[10px] uppercase tracking-wider">{d.short}</span>
                           </button>
@@ -401,7 +598,7 @@ export function OnboardingWizardPage() {
 
                   <div className="p-6 rounded-[24px] bg-[#F0F7FC] border border-[#0F3A53]/15 space-y-4">
                     <div className="flex items-center gap-2 text-[#0F3A53]">
-                      <Sparkles className="h-4 w-4 text-[#E3B341]" />
+                      <Sparkles className="h-4 w-4" style={{ color: secondaryColor }} />
                       <span className="text-[10px] font-black tracking-widest uppercase">ESTIMATED CAPACITY</span>
                     </div>
                     <div>
@@ -453,47 +650,25 @@ export function OnboardingWizardPage() {
                     </div>
 
                     <div className="space-y-1.5">
-                      <label className="text-[12px] font-bold text-[#475569] block">Category / Specialty</label>
+                      <label className="text-[12px] font-bold text-[#475569] block">City</label>
                       <input
                         type="text"
-                        value={category}
-                        onChange={(e) => setCategory(e.target.value)}
-                        placeholder="e.g. Clinical Psychology & Therapy"
+                        value={city}
+                        onChange={(e) => setCity(e.target.value)}
+                        placeholder="e.g. Lagos"
                         className="w-full h-[50px] px-4 rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-[14px] font-semibold text-[#0F172A] outline-none focus:bg-white focus:border-[#0F3A53] transition-all placeholder:text-[#CBD5E1]"
                       />
                     </div>
                   </div>
 
                   <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1.5">
-                        <label className="text-[12px] font-bold text-[#475569] block">Public Phone</label>
-                        <input
-                          type="tel"
-                          value={publicPhone}
-                          onChange={(e) => setPublicPhone(e.target.value)}
-                          placeholder="+234 803 000 0000"
-                          className="w-full h-[50px] px-3.5 rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-[13.5px] font-semibold text-[#0F172A] outline-none focus:bg-white focus:border-[#0F3A53] transition-all placeholder:text-[#CBD5E1]"
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <label className="text-[12px] font-bold text-[#475569] block">City</label>
-                        <input
-                          type="text"
-                          value={city}
-                          onChange={(e) => setCity(e.target.value)}
-                          placeholder="e.g. Lagos"
-                          className="w-full h-[50px] px-3.5 rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-[13.5px] font-semibold text-[#0F172A] outline-none focus:bg-white focus:border-[#0F3A53] transition-all placeholder:text-[#CBD5E1]"
-                        />
-                      </div>
-                    </div>
                     <div className="space-y-1.5">
-                      <label className="text-[12px] font-bold text-[#475569] block">Public Email</label>
+                      <label className="text-[12px] font-bold text-[#475569] block">Address</label>
                       <input
-                        type="email"
-                        value={publicEmail}
-                        onChange={(e) => setPublicEmail(e.target.value)}
-                        placeholder="hello@okonkwo.ng"
+                        type="text"
+                        value={address}
+                        onChange={(e) => setAddress(e.target.value)}
+                        placeholder="12 Admiralty Way, Lekki"
                         className="w-full h-[50px] px-4 rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-[14px] font-semibold text-[#0F172A] outline-none focus:bg-white focus:border-[#0F3A53] transition-all placeholder:text-[#CBD5E1]"
                       />
                     </div>
@@ -565,7 +740,8 @@ export function OnboardingWizardPage() {
               {stepKey === 'link' ? (
                 <button
                   onClick={() => navigate('/portal')}
-                  className="h-[50px] px-8 rounded-[16px] bg-[#0F3A53] text-white font-bold text-sm shadow-md hover:bg-[#144868] transition-all cursor-pointer ml-auto flex items-center gap-2"
+                  className="h-[50px] px-8 rounded-[16px] text-white font-bold text-sm shadow-md hover:brightness-110 transition-all cursor-pointer ml-auto flex items-center gap-2"
+                  style={{ backgroundColor: primaryColor }}
                 >
                   <span>Go to therapist dashboard</span>
                   <ArrowRight className="h-4 w-4" />
