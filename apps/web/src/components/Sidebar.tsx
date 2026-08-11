@@ -89,10 +89,12 @@ const PRACTICE_GROUPS_RECEPTIONIST: { label: string; items: NavItem[] }[] = [
 ];
 
 function getPracticeGroups(profile: any): { label: string; items: NavItem[] }[] {
-  if (profile?.role === 'owner' || profile?.role === 'admin' || profile?.type === 'admin') {
+  const role = profile?.role?.toLowerCase();
+  const type = profile?.type?.toLowerCase();
+  if (role === 'owner' || role === 'admin' || type === 'admin') {
     return PRACTICE_GROUPS_OWNER;
   }
-  if (profile?.type === 'receptionist') return PRACTICE_GROUPS_RECEPTIONIST;
+  if (type === 'receptionist') return PRACTICE_GROUPS_RECEPTIONIST;
   return PRACTICE_GROUPS_THERAPIST;
 }
 
