@@ -29,6 +29,15 @@ const AUTH_PATHS = new Set([
   '/v1/auth/status',
 ]);
 
+const AUTH_PUBLIC_PATHS = new Set([
+  '/v1/auth/login',
+  '/v1/auth/register',
+  '/v1/auth/forgot-password',
+  '/v1/auth/reset-password',
+  '/v1/auth/verify-email',
+  '/v1/auth/resend-verification',
+]);
+
 type SessionExpiredHandler = () => void;
 let onSessionExpired: SessionExpiredHandler | null = null;
 
@@ -51,7 +60,6 @@ function buildHeaders(
 ): Record<string, string> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    'X-Tenant-Slug': TENANT_SLUG,
     ...(extraHeaders as Record<string, string>),
   };
 
@@ -111,11 +119,16 @@ export async function apiRequest<T = unknown>(
 ): Promise<T> {
   const { body, headers: extraHeaders, _retried, ...rest } = options;
   const method = rest.method || 'GET';
+  const headers = buildHeaders(extraHeaders as Record<string, string> | undefined, method);
+
+  if (!('X-Tenant-Slug' in headers) && !AUTH_PUBLIC_PATHS.has(path)) {
+    headers['X-Tenant-Slug'] = TENANT_SLUG;
+  }
 
   const response = await fetch(`${API_BASE}${path}`, {
     ...rest,
     method,
-    headers: buildHeaders(extraHeaders as Record<string, string> | undefined, method),
+    headers,
     credentials: 'include',
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });

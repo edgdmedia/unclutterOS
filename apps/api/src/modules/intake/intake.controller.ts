@@ -3,6 +3,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { IntakeService } from './intake.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { TenantRequest } from '../../common/middleware/tenant.middleware';
+import { authenticatedTenantId } from '../../common/authenticated-tenant';
 
 @ApiTags('Intake')
 @Controller('v1/intake')
@@ -28,7 +29,7 @@ export class IntakeController {
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'List forms for the current tenant' })
   getForms(@Req() req: any) {
-    return this.intakeService.getForms(BigInt(req.user.tenantId || req.tenantId));
+    return this.intakeService.getForms(authenticatedTenantId(req));
   }
 
   @Get('forms/:formId')
@@ -36,7 +37,7 @@ export class IntakeController {
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Get a single form for editing' })
   getFormById(@Req() req: any, @Param('formId') formId: string) {
-    return this.intakeService.getFormById(BigInt(req.user.tenantId || req.tenantId), BigInt(formId));
+    return this.intakeService.getFormById(authenticatedTenantId(req), BigInt(formId));
   }
 
   @Post('forms')
@@ -44,10 +45,7 @@ export class IntakeController {
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Create custom clinical questionnaire (Admin/Therapist)' })
   createForm(@Req() req: any, @Body() dto: any) {
-    return this.intakeService.createCustomForm(
-      BigInt(req.user.tenantId || req.tenantId),
-      dto,
-    );
+    return this.intakeService.createCustomForm(authenticatedTenantId(req), dto);
   }
 
   @Patch('forms/:formId')
@@ -56,7 +54,7 @@ export class IntakeController {
   @ApiOperation({ summary: 'Update an existing form' })
   updateForm(@Req() req: any, @Param('formId') formId: string, @Body() dto: any) {
     return this.intakeService.updateForm(
-      BigInt(req.user.tenantId || req.tenantId),
+      authenticatedTenantId(req),
       BigInt(formId),
       dto,
     );
@@ -75,7 +73,7 @@ export class IntakeController {
   @ApiOperation({ summary: 'List all submissions for the current tenant' })
   getTenantSubmissions(@Req() req: any, @Query('targetType') targetType?: string) {
     return this.intakeService.getTenantSubmissions(
-      BigInt(req.user.tenantId || req.tenantId),
+      authenticatedTenantId(req),
       targetType,
     );
   }
@@ -86,7 +84,7 @@ export class IntakeController {
   @ApiOperation({ summary: 'Update a submission status for queue + review publishing' })
   updateSubmissionStatus(@Req() req: any, @Param('submissionId') submissionId: string, @Body() dto: any) {
     return this.intakeService.updateSubmissionStatus(
-      BigInt(req.user.tenantId || req.tenantId),
+      authenticatedTenantId(req),
       BigInt(submissionId),
       dto?.status || 'UNREAD',
     );
@@ -98,7 +96,7 @@ export class IntakeController {
   @ApiOperation({ summary: 'Therapist view client submitted intake responses' })
   getBookingSubmissions(@Req() req: any, @Param('bookingId') bookingId: string) {
     return this.intakeService.getBookingSubmissions(
-      BigInt(req.user.tenantId || req.tenantId),
+      authenticatedTenantId(req),
       BigInt(bookingId),
     );
   }

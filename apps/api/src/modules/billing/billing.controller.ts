@@ -2,7 +2,7 @@ import { Controller, Get, Post, Body, Req, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { BillingService } from './billing.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { TenantRequest } from '../../common/middleware/tenant.middleware';
+import { authenticatedTenantId } from '../../common/authenticated-tenant';
 
 @ApiTags('Billing')
 @Controller('v1/billing')
@@ -14,9 +14,7 @@ export class BillingController {
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Get saved Paystack bank subaccount status' })
   getSubaccount(@Req() req: any) {
-    return this.billingService.getBankSubaccount(
-      BigInt(req.user.tenantId || req.tenantId),
-    );
+    return this.billingService.getBankSubaccount(authenticatedTenantId(req));
   }
 
   @Get('subscription')
@@ -24,9 +22,7 @@ export class BillingController {
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Get current subscription tier summary' })
   getSubscription(@Req() req: any) {
-    return this.billingService.getSubscription(
-      BigInt(req.user.tenantId || req.tenantId),
-    );
+    return this.billingService.getSubscription(authenticatedTenantId(req));
   }
 
   @Get('summary')
@@ -34,9 +30,7 @@ export class BillingController {
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Get combined billing summary + derived history' })
   getSummary(@Req() req: any) {
-    return this.billingService.getBillingSummary(
-      BigInt(req.user.tenantId || req.tenantId),
-    );
+    return this.billingService.getBillingSummary(authenticatedTenantId(req));
   }
 
   @Post('bank-subaccount')
@@ -44,10 +38,7 @@ export class BillingController {
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Save bank subaccount details for split payouts' })
   saveSubaccount(@Req() req: any, @Body() dto: any) {
-    return this.billingService.saveBankSubaccount(
-      BigInt(req.user.tenantId || req.tenantId),
-      dto,
-    );
+    return this.billingService.saveBankSubaccount(authenticatedTenantId(req), dto);
   }
 
   @Post('subscribe')
@@ -56,7 +47,7 @@ export class BillingController {
   @ApiOperation({ summary: 'Upgrade practice SaaS subscription plan (Admin/Owner)' })
   subscribe(@Req() req: any, @Body() dto: { plan: 'STARTER' | 'PRO' | 'CLINIC' }) {
     return this.billingService.updateSubscriptionPlan(
-      BigInt(req.user.tenantId || req.tenantId),
+      authenticatedTenantId(req),
       dto.plan,
     );
   }

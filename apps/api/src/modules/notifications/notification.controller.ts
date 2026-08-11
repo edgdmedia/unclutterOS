@@ -17,6 +17,7 @@ import { Response } from 'express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { NotificationService } from './notification.service';
 import { ChannelKey } from './channels/notification.channel';
+import { authenticatedProfileId, authenticatedTenantId } from '../../common/authenticated-tenant';
 
 const SSE_POLL_MS = Number(process.env.NOTIFICATION_SSE_POLL_MS || 15_000);
 const SSE_HEARTBEAT_MS = 30_000;
@@ -29,11 +30,11 @@ export class NotificationController {
   constructor(private readonly notifications: NotificationService) {}
 
   private profileId(req: any): bigint {
-    return BigInt(req.user?.profileId ?? req.user?.userId);
+    return authenticatedProfileId(req);
   }
 
   private tenantId(req: any): bigint {
-    return BigInt(req.user?.tenantId ?? req.tenantId);
+    return authenticatedTenantId(req);
   }
 
   @Get()

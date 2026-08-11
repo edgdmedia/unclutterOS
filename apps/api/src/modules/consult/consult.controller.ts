@@ -3,6 +3,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { ConsultService } from './consult.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { TenantRequest } from '../../common/middleware/tenant.middleware';
+import { authenticatedProfileId, authenticatedTenantId } from '../../common/authenticated-tenant';
 
 @ApiTags('Consult')
 @Controller('v1/consult')
@@ -22,8 +23,8 @@ export class ConsultController {
   @ApiOperation({ summary: 'Get practitioner profile' })
   getProfile(@Req() req: any) {
     return this.consultService.getTherapistProfile(
-      BigInt(req.user.tenantId || req.tenantId),
-      BigInt(req.user.profileId),
+      authenticatedTenantId(req),
+      authenticatedProfileId(req),
     );
   }
 
@@ -33,8 +34,8 @@ export class ConsultController {
   @ApiOperation({ summary: 'Update practitioner profile text data' })
   updateProfile(@Req() req: any, @Body() dto: any) {
     return this.consultService.updateTherapistProfile(
-      BigInt(req.user.tenantId || req.tenantId),
-      BigInt(req.user.profileId),
+      authenticatedTenantId(req),
+      authenticatedProfileId(req),
       dto,
     );
   }
@@ -45,8 +46,8 @@ export class ConsultController {
   @ApiOperation({ summary: 'Dedicated profile photo upload endpoint (Max 2MB)' })
   uploadAvatar(@Req() req: any, @Body() dto: { avatarUrl: string }) {
     return this.consultService.uploadTherapistAvatar(
-      BigInt(req.user.tenantId || req.tenantId),
-      BigInt(req.user.profileId),
+      authenticatedTenantId(req),
+      authenticatedProfileId(req),
       dto.avatarUrl,
     );
   }
@@ -61,7 +62,7 @@ export class ConsultController {
     @Body() dto: { status: 'active' | 'inactive' },
   ) {
     return this.consultService.adminUpdateTherapistStatus(
-      BigInt(req.user.tenantId || req.tenantId),
+      authenticatedTenantId(req),
       BigInt(profileId),
       dto.status,
     );
@@ -82,7 +83,7 @@ export class ConsultController {
   @ApiOperation({ summary: 'Create new therapy session service' })
   createService(@Req() req: any, @Body() dto: any) {
     return this.consultService.createService(
-      BigInt(req.user.tenantId || req.tenantId),
+      authenticatedTenantId(req),
       dto,
     );
   }
@@ -100,8 +101,8 @@ export class ConsultController {
   @ApiOperation({ summary: 'Add availability slot or block-out dates' })
   createAvailability(@Req() req: any, @Body() dto: any) {
     return this.consultService.createAvailabilitySlot(
-      BigInt(req.user.tenantId || req.tenantId),
-      BigInt(req.user.profileId),
+      authenticatedTenantId(req),
+      authenticatedProfileId(req),
       dto,
     );
   }
@@ -112,8 +113,8 @@ export class ConsultController {
   @ApiOperation({ summary: 'Get therapist future availability slots' })
   getTherapistAvailability(@Req() req: any) {
     return this.consultService.getTherapistAvailability(
-      BigInt(req.user.tenantId || req.tenantId),
-      BigInt(req.user.profileId),
+      authenticatedTenantId(req),
+      authenticatedProfileId(req),
     );
   }
 
@@ -123,8 +124,8 @@ export class ConsultController {
   @ApiOperation({ summary: 'Replace therapist recurring availability windows' })
   replaceTherapistAvailability(@Req() req: any, @Body() dto: any) {
     return this.consultService.replaceTherapistAvailability(
-      BigInt(req.user.tenantId || req.tenantId),
-      BigInt(req.user.profileId),
+      authenticatedTenantId(req),
+      authenticatedProfileId(req),
       dto,
     );
   }
@@ -149,8 +150,8 @@ export class ConsultController {
   @ApiOperation({ summary: 'Get therapist upcoming client session bookings' })
   getTherapistBookings(@Req() req: any) {
     return this.consultService.getTherapistBookings(
-      BigInt(req.user.tenantId || req.tenantId),
-      BigInt(req.user.profileId),
+      authenticatedTenantId(req),
+      authenticatedProfileId(req),
     );
   }
 
@@ -160,8 +161,8 @@ export class ConsultController {
   @ApiOperation({ summary: 'Update therapist booking status' })
   updateTherapistBookingStatus(@Req() req: any, @Param('bookingId') bookingId: string, @Body() dto: { status: 'CONFIRMED' | 'COMPLETED' | 'CANCELLED' }) {
     return this.consultService.updateBookingStatus(
-      BigInt(req.user.tenantId || req.tenantId),
-      BigInt(req.user.profileId),
+      authenticatedTenantId(req),
+      authenticatedProfileId(req),
       BigInt(bookingId),
       dto.status,
     );
@@ -173,8 +174,8 @@ export class ConsultController {
   @ApiOperation({ summary: 'Get session prep context for a booking' })
   getBookingPrep(@Req() req: any, @Param('bookingId') bookingId: string) {
     return this.consultService.getBookingPrep(
-      BigInt(req.user.tenantId || req.tenantId),
-      BigInt(req.user.profileId),
+      authenticatedTenantId(req),
+      authenticatedProfileId(req),
       BigInt(bookingId),
     );
   }

@@ -2,6 +2,7 @@ import { Controller, Get, Post, Patch, Body, Param, Req, UseGuards } from '@nest
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { NotesService } from './notes.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { authenticatedProfileId, authenticatedTenantId } from '../../common/authenticated-tenant';
 
 @ApiTags('Notes')
 @UseGuards(JwtAuthGuard)
@@ -14,8 +15,8 @@ export class NotesController {
   @ApiOperation({ summary: 'Save or update SOAP session clinical notes (Therapist)' })
   saveNote(@Req() req: any, @Body() dto: any) {
     return this.notesService.saveSOAPNote(
-      BigInt(req.user.tenantId || req.tenantId),
-      BigInt(req.user.profileId),
+      authenticatedTenantId(req),
+      authenticatedProfileId(req),
       dto,
     );
   }
@@ -24,7 +25,7 @@ export class NotesController {
   @ApiOperation({ summary: 'Get client historical clinical case notes' })
   getClientNotes(@Req() req: any, @Param('clientProfileId') clientProfileId: string) {
     return this.notesService.getClientNotes(
-      BigInt(req.user.tenantId || req.tenantId),
+      authenticatedTenantId(req),
       BigInt(clientProfileId),
     );
   }
@@ -33,7 +34,7 @@ export class NotesController {
   @ApiOperation({ summary: 'Lock clinical note from further editing' })
   lockNote(@Req() req: any, @Param('id') noteId: string) {
     return this.notesService.lockNote(
-      BigInt(req.user.tenantId || req.tenantId),
+      authenticatedTenantId(req),
       BigInt(noteId),
     );
   }
