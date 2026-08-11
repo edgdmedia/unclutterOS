@@ -5,6 +5,15 @@ import { useAuth } from '../../context/AuthContext';
 import { AuthSplitShell } from '../../components/AuthSplitShell';
 import { AuthField, authInputCls } from '../../components/AuthField';
 
+function looksLikeVerificationPending(message: string): boolean {
+  const normalized = message.toLowerCase();
+  return (
+    normalized.includes('verify your email') ||
+    normalized.includes('verification code') ||
+    normalized.includes('request a new one from the verify email screen')
+  );
+}
+
 export function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -112,9 +121,27 @@ export function LoginPage() {
         </label>
 
         {error && (
-          <p className="mt-4 text-xs font-medium text-red-500 bg-red-50 rounded-[12px] px-3.5 py-2.5">
-            {error}
-          </p>
+          <div className="mt-4 rounded-[12px] bg-red-50 px-3.5 py-2.5 text-xs font-medium text-red-500">
+            <p>{error}</p>
+            {looksLikeVerificationPending(error) ? (
+              <div className="mt-2 flex gap-3 text-[#0F3A53]">
+                <Link
+                  to="/verify-email"
+                  state={{ email }}
+                  className="inline-flex hover:underline"
+                >
+                  Verify email
+                </Link>
+                <Link
+                  to="/verify-email"
+                  state={{ email }}
+                  className="inline-flex hover:underline"
+                >
+                  Resend verification code
+                </Link>
+              </div>
+            ) : null}
+          </div>
         )}
 
         <button

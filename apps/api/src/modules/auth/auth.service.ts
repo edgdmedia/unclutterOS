@@ -255,7 +255,10 @@ export class AuthService {
       throw new BadRequestException('Verification code expired. Please request a new one.');
     }
 
-    const profile = await this.prisma.profile.findFirst({ where: { userId: user.id } });
+    const profile = await this.prisma.profile.findFirst({
+      where: { userId: user.id },
+      orderBy: [{ emailVerified: 'desc' }, { createdAt: 'desc' }],
+    });
     if (!profile) throw new BadRequestException('Profile not found');
     const wasVerified = profile.emailVerified === true;
 
@@ -295,7 +298,10 @@ export class AuthService {
     const user = await this.prisma.user.findUnique({ where: { email } });
     if (!user) throw new BadRequestException('No account found for this email');
 
-    const profile = await this.prisma.profile.findFirst({ where: { userId: user.id } });
+    const profile = await this.prisma.profile.findFirst({
+      where: { userId: user.id },
+      orderBy: [{ emailVerified: 'asc' }, { createdAt: 'desc' }],
+    });
     if (!profile || profile.emailVerified) {
       return { message: 'Email already verified', success: true, alreadyVerified: true };
     }
@@ -326,20 +332,30 @@ export class AuthService {
 
     // Always answer the same way so the endpoint can't be used to enumerate
     // which emails have UnclutterOS accounts.
-    const generic = { message: 'If an account exists for this email, a reset link has been sent.', success: true };
+    const generic = {
+      message: 'If an account exists for this email, a reset link has been sent.',
+      success: true,
+      email_sent: null as boolean | null,
+    };
     if (!user) return generic;
 
     const token = await this.createPasswordResetToken(user.id);
     const profile = await this.prisma.profile.findFirst({
       where: { userId: user.id },
-      orderBy: { createdAt: 'desc' },
+      orderBy: [{ emailVerified: 'desc' }, { createdAt: 'desc' }],
     });
 
-    const baseUrl = (process.env.APP_BASE_URL || 'https://os.unclutter.com.ng').replace(/\/+$/, '');
+    const baseUrl = (
+      process.env.APP_BASE_URL ||
+      process.env.VITE_APP_URL ||
+      process.env.WEB_BASE_URL ||
+      'https://os.unclutter.com.ng'
+    ).replace(/\/+$/, '');
     const resetLink = `${baseUrl}/reset-password/${token}`;
 
+    let emailSent = false;
     try {
-      await this.notifications.sendEmail({
+      const result = await this.notifications.sendEmail({
         to: email,
         type: 'auth.password_reset',
         title: 'Reset your password',
@@ -349,11 +365,26 @@ export class AuthService {
         tenantId: profile?.tenantId ?? null,
         profileId: profile?.id ?? null,
       });
+      emailSent = result.success;
+      this.logger.log(
+        `Password reset email processed for ${email}: success=${result.success} provider=${result.providerId ?? 'n/a'} link=${resetLink}`,
+      );
+      if (!result.success) {
+        this.logger.warn(
+          `Password reset email delivery failed for ${email}: ${result.error || 'unknown delivery failure'}`,
+        );
+      }
     } catch (err) {
       this.logger.warn(`Failed to send password reset email to ${email}: ${(err as Error).message}`);
     }
 
-    return generic;
+    return {
+      ...generic,
+      email_sent: emailSent,
+      message: emailSent
+        ? generic.message
+        : 'We could not send a reset email right now. Please try again in a moment.',
+    };
   }
 
   async resetPassword(dto: { token: string; newPassword: string }) {
@@ -420,34 +451,49 @@ export class AuthService {
   async login(tenantId: bigint | undefined, dto: { email: string; password: string }) {
     const email = dto.email.toLowerCase().trim();
 
-    const whereClause = tenantId ? { tenantId, email } : { email };
-    const profile = await this.prisma.profile.findFirst({
-      where: whereClause,
-      include: { user: true },
-      orderBy: { createdAt: 'desc' },
-    });
-
-    if (!profile || !profile.user) {
+    const user = await this.prisma.user.findUnique({ where: { email } });
+    if (!user) {
       throw new UnauthorizedException('Invalid email or password');
     }
 
-    if (profile.status === 'inactive') {
-      throw new UnauthorizedException('Your account has been deactivated. Please contact your administrator.');
-    }
-
-    const passwordValid = await bcrypt.compare(dto.password, profile.user.password);
+    const passwordValid = await bcrypt.compare(dto.password, user.password);
     if (!passwordValid) {
       throw new UnauthorizedException('Invalid email or password');
     }
 
-    if (!profile.emailVerified) {
+    const candidateProfiles = await this.prisma.profile.findMany({
+      where: tenantId ? { tenantId, userId: user.id } : { userId: user.id },
+      orderBy: [{ emailVerified: 'desc' }, { createdAt: 'desc' }],
+    });
+
+    const profile = candidateProfiles[0] ?? null;
+    const latestUnverifiedProfile = candidateProfiles.find((item) => item.emailVerified !== true) ?? null;
+
+    if (!profile) {
+      throw new UnauthorizedException('Invalid email or password');
+    }
+
+    if (profile.status === 'inactive' && !latestUnverifiedProfile) {
+      throw new UnauthorizedException('Your account has been deactivated. Please contact your administrator.');
+    }
+
+    if (latestUnverifiedProfile) {
+      const latestVerification = await this.prisma.token.findFirst({
+        where: { userId: user.id, type: 'email_verification' },
+        orderBy: { createdAt: 'desc' },
+      });
+      const canResendVerification =
+        !latestVerification || latestVerification.expiresAt < new Date();
+
       throw new ForbiddenException(
-        'Please verify your email address before logging in. Check your inbox for the verification link.',
+        canResendVerification
+          ? 'Please verify your email address before logging in. Your previous verification code may have expired, so request a new one from the verify email screen.'
+          : 'Please verify your email address before logging in. Check your inbox for the verification code.',
       );
     }
 
     const { accessToken, refreshToken } = this.generateTokens(
-      profile.user.id,
+      user.id,
       profile.id,
       profile.tenantId,
       profile.type,

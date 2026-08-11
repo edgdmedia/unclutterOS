@@ -10,13 +10,20 @@ export function ForgotPasswordPage() {
   const [sent, setSent] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
+  const [info, setInfo] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setInfo('');
     setSending(true);
     try {
-      await api.post('/v1/auth/forgot-password', { email });
+      const result = await api.post<{ email_sent?: boolean | null; message?: string }>('/v1/auth/forgot-password', { email });
+      if (result.email_sent === false) {
+        setError(result.message || 'We could not send a reset email right now. Please try again.');
+        return;
+      }
+      setInfo(result.message || 'Check your inbox for instructions. The link is good for one hour.');
       setSent(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
@@ -44,10 +51,10 @@ export function ForgotPasswordPage() {
             Reset email sent
           </div>
           <p className="mt-2 text-sm text-[#166534] leading-[1.6]">
-            Check your inbox for instructions. The link is good for one hour.
+            {info || 'Check your inbox for instructions. The link is good for one hour.'}
           </p>
           <button
-            onClick={() => { setSent(false); setError(''); }}
+            onClick={() => { setSent(false); setError(''); setInfo(''); }}
             className="mt-[18px] h-11 px-[18px] border border-[#BBF7D0] rounded-[13px] bg-white text-[#15803D] text-[13.5px] font-bold cursor-pointer transition-colors hover:bg-[#F0FDF4]"
           >
             Send it again

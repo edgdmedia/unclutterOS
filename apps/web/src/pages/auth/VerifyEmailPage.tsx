@@ -11,11 +11,17 @@ export function VerifyEmailPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  const emailFromState = (location.state as { email?: string } | null)?.email;
+  const state = (location.state as { email?: string; emailSent?: boolean } | null) || null;
+  const emailFromState = state?.email;
   const emailFromQuery = searchParams.get('email') || '';
   const [email, setEmail] = useState(emailFromState || emailFromQuery || '');
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(
+    state?.emailSent === false
+      ? 'We could not deliver your verification code yet. Use the resend button below after confirming your email address.'
+      : null,
+  );
   const [verifying, setVerifying] = useState(false);
   const [verified, setVerified] = useState(false);
   const [resending, setResending] = useState(false);
@@ -45,6 +51,7 @@ export function VerifyEmailPage() {
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setInfo(null);
     const normalized = email.trim().toLowerCase();
     if (!normalized) {
       setError('Enter the email address you registered with.');
@@ -67,6 +74,7 @@ export function VerifyEmailPage() {
 
   const handleResend = async () => {
     setError(null);
+    setInfo(null);
     const normalized = email.trim().toLowerCase();
     if (!normalized) {
       setError('Enter the email address you registered with first.');
@@ -74,7 +82,12 @@ export function VerifyEmailPage() {
     }
     setResending(true);
     try {
-      await api.post('/v1/auth/resend-verification', { email: normalized });
+      const result = await api.post<{ email_sent?: boolean }>('/v1/auth/resend-verification', { email: normalized });
+      if (result.email_sent === false) {
+        setInfo('We still could not deliver the verification code. Check the server mail configuration and try again.');
+      } else {
+        setInfo('A fresh verification code has been sent.');
+      }
       startCooldown();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to resend the code. Please try again.');
@@ -145,7 +158,7 @@ export function VerifyEmailPage() {
         We sent a 6-digit code to your inbox. Enter it below to activate your account.
       </p>
 
-      <form onSubmit={handleVerify} className="mt-[22px] flex flex-col gap-4">
+        <form onSubmit={handleVerify} className="mt-[22px] flex flex-col gap-4">
         <AuthField
           label="Email"
           icon={<Mail className="h-[17px] w-[17px] text-[#94A3B8] flex-none" strokeWidth={2} />}
@@ -174,6 +187,7 @@ export function VerifyEmailPage() {
           />
         </AuthField>
 
+        {info ? <p className="text-xs font-medium text-amber-700 bg-amber-50 rounded-[12px] px-3.5 py-2.5">{info}</p> : null}
         {error ? <p className="text-xs font-medium text-red-500 bg-red-50 rounded-[12px] px-3.5 py-2.5">{error}</p> : null}
 
         <button

@@ -39,7 +39,7 @@ export function SignupPage() {
     setSubmitting(true);
     try {
       const nameParts = fullName.trim().split(/\s+/);
-      await register({
+      const result = await register({
         firstName: nameParts[0] || fullName.trim(),
         lastName: nameParts.slice(1).join(' '),
         email,
@@ -48,7 +48,7 @@ export function SignupPage() {
         persona,
         alsoTherapist: persona === 'practice' ? alsoTherapist : undefined,
       });
-      navigate('/verify-email', { state: { email } });
+      navigate('/verify-email', { state: { email, emailSent: result.email_sent } });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to create your practice. Please try again.');
     } finally {
