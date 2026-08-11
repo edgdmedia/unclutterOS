@@ -229,7 +229,7 @@ export function SchedulePage({ sessions, setSessions, clients }: SchedulePagePro
           </div>
 
           <button
-            onClick={() => setShowAvailabilityModal(true)}
+            onClick={() => navigate('/portal/settings/availability')}
             className="h-[40px] px-4 rounded-[14px] bg-white border border-[#CBD5E1] text-[#0F172A] text-xs font-bold hover:bg-[#F8FAFC] flex items-center gap-1.5 cursor-pointer"
           >
             <Settings className="h-3.5 w-3.5" />
@@ -699,54 +699,6 @@ export function SchedulePage({ sessions, setSessions, clients }: SchedulePagePro
       {/* Set Availability Modal */}
       {showAvailabilityModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center p-6 z-50 animate-fade-in">
-          <div className="w-full max-w-[420px] bg-white rounded-[24px] p-6 shadow-2xl space-y-4 border border-slate-200 relative">
-            <button
-              onClick={() => setShowAvailabilityModal(false)}
-              className="absolute top-5 right-5 text-slate-400 hover:text-slate-600 cursor-pointer"
-            >
-              <X className="h-5 w-5" />
-            </button>
-
-            <div className="flex items-center gap-2 pb-1 border-b border-slate-100">
-              <Settings className="h-5 w-5" style={{ color: primaryColor }} />
-              <h3 className="text-lg font-bold text-[#0F172A]">Set Recurring Availability</h3>
-            </div>
-
-            <p className="text-xs text-[#64748B] leading-relaxed">
-              Define your regular operating hours. Clients can only schedule appointments during active slots.
-            </p>
-
-            <div className="space-y-3.5">
-              {[
-                { day: 'Mon — Fri', hours: '09:00 AM — 05:00 PM', active: true },
-                { day: 'Saturday', hours: '10:00 AM — 02:00 PM', active: false },
-                { day: 'Sunday', hours: 'Not available', active: false },
-              ].map((s, idx) => (
-                <div key={idx} className="flex items-center justify-between p-3 bg-slate-50 rounded-[14px] border border-slate-100">
-                  <div>
-                    <span className="text-xs font-bold text-[#0F172A] block">{s.day}</span>
-                    <span className="text-[11px] font-medium text-slate-500">{s.hours}</span>
-                  </div>
-                  <span
-                    className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
-                      s.active ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-500'
-                    }`}
-                  >
-                    {s.active ? 'ACTIVE' : 'OFF'}
-                  </span>
-                </div>
-              ))}
-            </div>
-
-            <button
-              onClick={() => setShowAvailabilityModal(false)}
-              className="w-full h-11 rounded-[14px] text-white font-bold text-xs hover:brightness-95 cursor-pointer"
-              style={{ backgroundColor: primaryColor }}
-            >
-              Save Schedule Templates
-            </button>
-          </div>
-        </div>
       )}
       {/* Session Complete / SOAP Note Prompt Modal */}
       {sessionCompleteEvent && (
