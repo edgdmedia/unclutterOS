@@ -74,7 +74,7 @@ function ChipGroup<T extends string>({ value, options, onSelect }: { value: T; o
 }
 
 export function AccountPreferencesPage() {
-  const [email, setEmail] = useState('jane@drjanesmith.com');
+  const [email, setEmail] = useState('adaeze@okonkwotherapy.ng');
   const [language, setLanguage] = useState('English (Nigeria)');
   const [country, setCountry] = useState('Nigeria');
   const [timezone, setTimezone] = useState('GMT+1 Lagos');

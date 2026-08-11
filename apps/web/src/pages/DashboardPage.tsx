@@ -22,7 +22,7 @@ export function DashboardPage(props: DashboardPageProps) {
   const primaryColor = props.primaryColor || '#0F3A53';
   const secondaryColor = props.secondaryColor || '#E3B341';
   const [customDomain, setCustomDomain] = useState('');
-  const [profileName, setProfileName] = useState('Dr. Jane Smith');
+  const [profileName, setProfileName] = useState('Dr. Adaeze Okonkwo');
   const [profileTitle, setProfileTitle] = useState('Clinical Psychologist');
   const [profileAvatar, setProfileAvatar] = useState<string | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -73,7 +73,7 @@ export function DashboardPage(props: DashboardPageProps) {
         ]);
         if (cancelled) return;
         setCustomDomain(brand.customDomain || '');
-        setProfileName(`${profile.firstName || ''} ${profile.lastName || ''}`.trim() || 'Dr. Jane Smith');
+        setProfileName(`${profile.firstName || ''} ${profile.lastName || ''}`.trim() || 'Dr. Adaeze Okonkwo');
         setProfileTitle(profile.specialty || 'Clinical Psychologist');
         setProfileAvatar(profile.avatarUrl || null);
         setUnreadCount(notifications.filter((item) => item.unread).length);

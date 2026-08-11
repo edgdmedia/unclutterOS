@@ -21,7 +21,7 @@ type ReviewForm = {
 };
 
 export function PublicReviewFormPage() {
-  const { slug = 'dr-smith' } = useParams<{ slug: string }>();
+  const { slug = '' } = useParams<{ slug: string }>();
   const brand = useBrand();
   const primaryColor = brand.primaryColor || '#0F3A53';
   const secondaryColor = brand.secondaryColor || '#E3B341';

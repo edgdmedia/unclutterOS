@@ -155,7 +155,7 @@ export function SignupPage() {
             required
             value={fullName}
             onChange={(e) => setFullName(e.target.value)}
-            placeholder="e.g. Dr. Jane Smith"
+            placeholder="e.g. Dr. Adaeze Okonkwo"
             className={authInputCls}
           />
         </AuthField>
@@ -169,7 +169,7 @@ export function SignupPage() {
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="jane@smiththerapy.com"
+            placeholder="adaeze@okonkwotherapy.ng"
             className={authInputCls}
           />
         </AuthField>

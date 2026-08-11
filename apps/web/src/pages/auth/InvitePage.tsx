@@ -55,10 +55,10 @@ export function InvitePage() {
         <div className="my-auto py-10 relative z-[2]">
           <div className="text-[9px] font-black tracking-[0.24em] text-[#E3B341]">YOU'VE BEEN INVITED</div>
           <div className="mt-4 text-[38px] font-bold tracking-[-0.035em] text-white leading-[1.15]">
-            You've been invited to join Smith Therapy Ltd
+            You've been invited to join the practice
           </div>
           <p className="mt-[18px] text-[15px] text-[#94A3B8] leading-[1.65] max-w-[380px]">
-            Dr. Jane Smith added you as a{' '}
+            Your practice manager added you as a{' '}
             <span className="text-[#E3B341] font-semibold">Therapist</span>. Set a password and
             you'll be in — your calendar and client list are waiting.
           </p>

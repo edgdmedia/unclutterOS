@@ -229,8 +229,8 @@ const FALLBACK_SESSIONS: CalendarEvent[] = [
 ];
 
 const FALLBACK_STAFF: StaffMember[] = [
-  { id: '1', name: 'Dr. Jane Smith', title: 'Clinical director', email: 'dr.jane@smiththerapy.ng', role: 'OWNER', status: 'Active', initials: 'JS' },
-  { id: '2', name: 'Nkem Eze', title: 'Counselling psychologist', email: 'nkem@smiththerapy.ng', role: 'THERAPIST', status: 'Active', initials: 'NE' },
+  { id: '1', name: 'Dr. Adaeze Okonkwo', title: 'Clinical director', email: 'dr.adaeze@okonkwotherapy.ng', role: 'OWNER', status: 'Active', initials: 'AO' },
+  { id: '2', name: 'Nkem Eze', title: 'Counselling psychologist', email: 'nkem@okonkwotherapy.ng', role: 'THERAPIST', status: 'Active', initials: 'NE' },
 ];
 
 // ── SWR data fetchers ─────────────────────────────────────────────────────────
@@ -267,7 +267,7 @@ function AppLayout() {
     payoutsActive: true,
     bankName: 'Access Bank',
     accountNumber: '1023456789',
-    accountName: 'Dr. Jane Smith Practice',
+    accountName: 'Dr. Adaeze Okonkwo Practice',
     invoiceHistory: [
       { date: '1 Aug 2026', desc: 'Pro Solo — Monthly Plan', amount: '₦25,000', status: 'PAID' },
       { date: '1 Jul 2026', desc: 'Pro Solo — Monthly Plan', amount: '₦25,000', status: 'PAID' },

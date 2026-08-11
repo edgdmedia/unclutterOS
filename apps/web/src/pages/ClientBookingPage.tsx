@@ -19,14 +19,14 @@ function formatTime(value: string) {
 
 export function ClientBookingPage() {
   const navigate = useNavigate();
-  const { slug = 'dr-smith' } = useParams<{ slug: string }>();
+  const { slug = '' } = useParams<{ slug: string }>();
   const [selectedServiceId, setSelectedServiceId] = useState<string>('');
   const [selectedDateKey, setSelectedDateKey] = useState<string>('');
   const [selectedSlotId, setSelectedSlotId] = useState<string>('');
   const [sessionFormat, setSessionFormat] = useState<'online' | 'in-person'>('online');
-  const [fullName, setFullName] = useState('Adaeze Okonkwo');
-  const [email, setEmail] = useState('adaeze@email.com');
-  const [phone, setPhone] = useState('+234 801 234 5678');
+  const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [concerns, setConcerns] = useState('');
   const [reviews, setReviews] = useState<PublicReviewsPayload>({ averageRating: null, count: 0, reviews: [] });
   const [services, setServices] = useState<PublicService[]>([]);
@@ -38,6 +38,15 @@ export function ClientBookingPage() {
   const brand = useBrand();
   const primaryColor = brand.primaryColor || '#0F3A53';
   const secondaryColor = brand.secondaryColor || '#E3B341';
+  const practiceName = brand.name || 'Therapy Practice';
+  const therapistName = availability[0]?.therapistName || brand.name || 'Practitioner';
+
+  const initials = practiceName
+    .split(' ')
+    .map((n) => n[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase() || 'TP';
 
   useEffect(() => {
     let cancelled = false;
@@ -129,11 +138,11 @@ export function ClientBookingPage() {
       <div className="w-full max-w-[1180px] shadow-2xl rounded-3xl overflow-hidden my-8 border border-[#E2E8F0] bg-white">
         <header className="p-[30px_40px_26px] border-b" style={{ background: `linear-gradient(120deg, ${primaryColor}14, ${secondaryColor}1F)`, borderColor: `${primaryColor}33` }}>
           <div className="flex items-center gap-5">
-            <div className="h-[82px] w-[82px] rounded-[26px] bg-white shadow-[0_8px_24px_rgba(15,23,42,.10)] flex items-center justify-center font-extrabold text-[26px] shrink-0 border border-slate-100" style={{ color: primaryColor }}>JS</div>
+            <div className="h-[82px] w-[82px] rounded-[26px] bg-white shadow-[0_8px_24px_rgba(15,23,42,.10)] flex items-center justify-center font-extrabold text-[26px] shrink-0 border border-slate-100" style={{ color: primaryColor }}>{initials}</div>
             <div className="space-y-1 flex-1">
-              <span className="text-[11px] font-black tracking-[0.2em] uppercase block" style={{ color: primaryColor }}>Dr. Jane Smith Therapy</span>
-              <div className="flex items-center gap-3"><h1 className="text-[30px] font-extrabold tracking-[-0.035em] text-[#0F172A]">Book a session with Dr. Jane Smith</h1><span className="h-[20px] px-3 rounded-full text-[10px] font-bold tracking-[0.06em] uppercase flex items-center" style={{ backgroundColor: `${secondaryColor}1A`, color: '#8A6512' }}>CLINICAL PSYCHOLOGY</span></div>
-              <div className="flex items-center gap-4 text-[13px] text-[#475569] font-medium pt-1">{reviews.count > 0 ? <><span className="flex items-center gap-1"><Star className="h-4 w-4 fill-[#E3B341] stroke-[#E3B341]" /><strong className="text-[#0F172A]">{reviews.averageRating?.toFixed(1)}</strong> ({reviews.count} reviews)</span><span>·</span></> : null}<span className="flex items-center gap-1"><MapPin className="h-4 w-4 text-[#64748B]" />Lagos, Nigeria · Online & in-person</span><span>·</span><span className="flex items-center gap-1"><Award className="h-4 w-4 text-[#64748B]" />Licensed · 12 years practising</span></div>
+              <span className="text-[11px] font-black tracking-[0.2em] uppercase block" style={{ color: primaryColor }}>{practiceName}</span>
+              <div className="flex items-center gap-3"><h1 className="text-[30px] font-extrabold tracking-[-0.035em] text-[#0F172A]">Book a session with {therapistName}</h1><span className="h-[20px] px-3 rounded-full text-[10px] font-bold tracking-[0.06em] uppercase flex items-center" style={{ backgroundColor: `${secondaryColor}1A`, color: '#8A6512' }}>CLINICAL PRACTICE</span></div>
+              <div className="flex items-center gap-4 text-[13px] text-[#475569] font-medium pt-1">{reviews.count > 0 ? <><span className="flex items-center gap-1"><Star className="h-4 w-4 fill-[#E3B341] stroke-[#E3B341]" /><strong className="text-[#0F172A]">{reviews.averageRating?.toFixed(1)}</strong> ({reviews.count} reviews)</span><span>·</span></> : null}<span className="flex items-center gap-1"><MapPin className="h-4 w-4 text-[#64748B]" />Lagos, Nigeria · Online & in-person</span></div>
             </div>
           </div>
         </header>
@@ -183,12 +192,12 @@ export function ClientBookingPage() {
             <div className="space-y-4">
               <div className="flex items-center gap-3"><div className="h-[22px] w-[22px] rounded-full text-white font-extrabold text-[11px] flex items-center justify-center" style={{ backgroundColor: primaryColor }}>3</div><h2 className="text-[16px] font-bold text-[#0F172A]">Your details</h2></div>
               <div className="p-5 rounded-[22px] bg-white border border-[#E2E8F0] grid grid-cols-2 gap-4">
-                <div className="space-y-1.5"><label className="text-[11.5px] font-bold text-[#475569]">Full name</label><input type="text" value={fullName} onChange={(e) => setFullName(e.target.value)} className="w-full h-[46px] px-3.5 rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-[14px] font-medium text-[#0F172A] outline-none focus:bg-white focus:border-[#94A3B8]" /></div>
-                <div className="space-y-1.5"><label className="text-[11.5px] font-bold text-[#475569]">Email address</label><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full h-[46px] px-3.5 rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-[14px] font-medium text-[#0F172A] outline-none focus:bg-white focus:border-[#94A3B8]" /></div>
-                <div className="space-y-1.5"><label className="text-[11.5px] font-bold text-[#475569]">Phone number</label><input type="text" value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full h-[46px] px-3.5 rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-[14px] font-medium text-[#0F172A] outline-none focus:bg-white focus:border-[#94A3B8]" /></div>
+                <div className="space-y-1.5"><label className="text-[11.5px] font-bold text-[#475569]">Full name</label><input type="text" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="e.g. Adaeze Okonkwo" className="w-full h-[46px] px-3.5 rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-[14px] font-medium text-[#0F172A] outline-none focus:bg-white focus:border-[#94A3B8]" /></div>
+                <div className="space-y-1.5"><label className="text-[11.5px] font-bold text-[#475569]">Email address</label><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="e.g. adaeze@example.ng" className="w-full h-[46px] px-3.5 rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-[14px] font-medium text-[#0F172A] outline-none focus:bg-white focus:border-[#94A3B8]" /></div>
+                <div className="space-y-1.5"><label className="text-[11.5px] font-bold text-[#475569]">Phone number</label><input type="text" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="e.g. +234 803 123 4567" className="w-full h-[46px] px-3.5 rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-[14px] font-medium text-[#0F172A] outline-none focus:bg-white focus:border-[#94A3B8]" /></div>
                 <div className="space-y-1.5"><label className="text-[11.5px] font-bold text-[#475569]">Session format</label><div className="h-[46px] p-1 bg-[#F1F5F9] rounded-[14px] flex gap-1"><button onClick={() => setSessionFormat('online')} className={`flex-1 rounded-[11px] text-xs font-bold transition-all ${sessionFormat === 'online' ? 'bg-white text-[#0F172A] shadow-xs' : 'text-[#64748B]'}`}>Online</button><button onClick={() => setSessionFormat('in-person')} className={`flex-1 rounded-[11px] text-xs font-bold transition-all ${sessionFormat === 'in-person' ? 'bg-white text-[#0F172A] shadow-xs' : 'text-[#64748B]'}`}>In-person</button></div></div>
-                <div className="col-span-2 space-y-1.5"><label className="text-[11.5px] font-bold text-[#475569]">Share concerns <span className="text-[#94A3B8] font-normal">(optional)</span></label><textarea rows={3} value={concerns} onChange={(e) => setConcerns(e.target.value)} placeholder="Anything you'd like Dr. Smith to know before your first session." className="w-full p-3.5 rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-[14px] font-medium text-[#0F172A] outline-none focus:bg-white focus:border-[#94A3B8] resize-none" /></div>
-                <div className="col-span-2 flex items-center gap-2 text-[11.5px] text-[#94A3B8] font-medium pt-1"><ShieldCheck className="h-4 w-4 text-emerald-600" /><span>Encrypted and confidential. Shared only with Dr. Smith.</span></div>
+                <div className="col-span-2 space-y-1.5"><label className="text-[11.5px] font-bold text-[#475569]">Share concerns <span className="text-[#94A3B8] font-normal">(optional)</span></label><textarea rows={3} value={concerns} onChange={(e) => setConcerns(e.target.value)} placeholder="Anything you'd like your therapist to know before your session." className="w-full p-3.5 rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-[14px] font-medium text-[#0F172A] outline-none focus:bg-white focus:border-[#94A3B8] resize-none" /></div>
+                <div className="col-span-2 flex items-center gap-2 text-[11.5px] text-[#94A3B8] font-medium pt-1"><ShieldCheck className="h-4 w-4 text-emerald-600" /><span>Encrypted and confidential. Shared only with {therapistName}.</span></div>
               </div>
             </div>
           </div>
@@ -198,7 +207,7 @@ export function ClientBookingPage() {
             <div className="px-[22px] space-y-3 text-[13.5px]">
               <div className="flex items-center justify-between"><span className="text-[12.5px] font-semibold text-[#94A3B8]">Date</span><span className="font-bold text-[#0F172A]">{selectedSlot ? new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(selectedSlot.startsAt)) : 'Select a slot'}</span></div>
               <div className="flex items-center justify-between"><span className="text-[12.5px] font-semibold text-[#94A3B8]">Time</span><span className="font-bold text-[#0F172A]">{selectedSlot ? formatTime(selectedSlot.startsAt) : '--'}</span></div>
-              <div className="flex items-center justify-between"><span className="text-[12.5px] font-semibold text-[#94A3B8]">Therapist</span><span className="font-bold text-[#0F172A]">{selectedSlot?.therapistName || 'Dr. Jane Smith'}</span></div>
+              <div className="flex items-center justify-between"><span className="text-[12.5px] font-semibold text-[#94A3B8]">Therapist</span><span className="font-bold text-[#0F172A]">{selectedSlot?.therapistName || therapistName}</span></div>
               <div className="flex items-center justify-between"><span className="text-[12.5px] font-semibold text-[#94A3B8]">Format</span><span className="font-bold text-[#0F172A] capitalize">{sessionFormat}</span></div>
               <div className="h-[1px] bg-[#E2E8F0] my-2" />
               <div className="flex items-baseline justify-between pt-1"><span className="text-[13px] font-bold text-[#475569]">Total</span><span className="text-[26px] font-extrabold tracking-[-0.035em] text-[#0F172A]">{selectedService ? formatMoney(selectedService.priceKobo) : '--'}</span></div>

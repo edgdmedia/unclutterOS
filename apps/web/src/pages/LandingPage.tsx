@@ -91,7 +91,7 @@ const TABS: Tab[] = [
     ],
     panelLabel: 'STAFF ROSTER — 6 MEMBERS',
     rows: [
-      { title: 'Dr. Jane Smith', meta: 'Clinical Psychologist', pill: 'OWNER', tone: 'gold' },
+      { title: 'Dr. Adaeze Okonkwo', meta: 'Clinical Psychologist', pill: 'OWNER', tone: 'gold' },
       { title: 'Dr. Emeka N.', meta: 'Psychotherapist', pill: 'THERAPIST', tone: 'navy' },
       { title: 'Amara U.', meta: 'Front desk', pill: 'RECEPTION', tone: 'muted' },
       { title: 'Dr. Bola A.', meta: 'Supervisor', pill: 'SUPERVISOR', tone: 'navy' },
@@ -110,9 +110,9 @@ const QUOTES = [
   {
     quote:
       'UnclutterOS allowed me to launch my private practice in 10 minutes. My clients book directly on my custom domain and payments land in my account instantly.',
-    author: 'Dr. Jane Smith',
+    author: 'Dr. Adaeze Okonkwo',
     role: 'Clinical Psychologist, Lagos',
-    initials: 'JS',
+    initials: 'AO',
   },
   {
     quote:
@@ -318,7 +318,7 @@ function Hero() {
               </div>
               <div className="flex-1 p-[18px] flex flex-col gap-[14px]">
                 <div className="flex items-baseline gap-[10px]">
-                  <span className="text-[16px] font-bold tracking-[-0.02em]">Good morning, Dr. Jane</span>
+                  <span className="text-[16px] font-bold tracking-[-0.02em]">Good morning, Dr. Adaeze</span>
                   <span className="text-[11px] text-[#64748B]">6 sessions today</span>
                 </div>
                 <div className="grid grid-cols-3 gap-[10px]">
@@ -360,7 +360,7 @@ function Hero() {
           <div className="absolute right-[-6px] bottom-[-52px] w-[214px] rounded-[32px] bg-[#0F172A] p-[9px] shadow-[0_40px_80px_rgba(0,0,0,0.55)] border border-[rgba(255,255,255,0.12)]">
             <div className="rounded-[25px] overflow-hidden bg-[#FDFCF8] h-[400px] flex flex-col">
               <div className="h-9 bg-[#0F3A53] flex items-center justify-center text-white text-[11px] font-bold tracking-[-0.01em]">
-                Dr. Jane Smith
+                Dr. Adaeze Okonkwo
               </div>
               <div className="p-[14px] flex flex-col gap-[10px] flex-1">
                 <div className="text-[8.5px] font-black tracking-[0.2em] text-[#94A3B8]">BOOK A SESSION</div>

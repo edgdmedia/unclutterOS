@@ -1,8 +1,10 @@
 import React from 'react';
 import { PauseCircle, Mail, ArrowLeft } from 'lucide-react';
+import { useBrand } from '@unclutteros/ui';
 
 export function InactivePracticePage() {
-  const primaryColor = '#0F3A53';
+  const brand = useBrand();
+  const primaryColor = brand.primaryColor || '#0F3A53';
 
   return (
     <div className="min-h-screen bg-[#EFF3F7] text-[#0F172A] font-outfit flex items-center justify-center p-6 relative overflow-hidden">
@@ -16,7 +18,7 @@ export function InactivePracticePage() {
             DS
           </div>
           <div className="text-left">
-            <h2 className="text-[16px] font-bold text-[#0F172A] leading-tight">Dr. Jane Smith Therapy</h2>
+            <h2 className="text-[16px] font-bold text-[#0F172A] leading-tight">{brand.name || 'Therapy Practice'}</h2>
             <p className="text-xs text-[#64748B] font-medium">Lagos, Nigeria</p>
           </div>
         </div>
@@ -26,10 +28,11 @@ export function InactivePracticePage() {
           <div className="h-[64px] w-[64px] rounded-[20px] bg-[#FEF3C7] text-[#92400E] flex items-center justify-center mx-auto border border-[#E3B341]/30 shadow-xs">
             <PauseCircle className="h-8 w-8" />
           </div>
-          <h1 className="text-[25px] font-bold tracking-tight text-[#0F172A]">Bookings temporarily paused</h1>
-          <p className="text-[13.5px] text-[#475569] font-medium max-w-[420px] mx-auto leading-relaxed">
-            Dr. Jane Smith is not currently accepting new online bookings. Existing booked sessions remain scheduled and active.
-          </p>
+          <h2 className="text-[16px] font-bold text-[#0F172A] leading-tight">{brand.name || 'Therapy Practice'}</h2>
+          <p className="text-xs text-[#64748B] font-medium mt-0.5">Online booking unavailable</p>
+        </div>
+        <div className="p-6 text-sm text-[#475569] leading-relaxed">
+          This practice is not currently accepting new online bookings. Existing booked sessions remain scheduled and active.
         </div>
 
         {/* Actions */}
