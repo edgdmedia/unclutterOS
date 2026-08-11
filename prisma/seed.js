@@ -7,6 +7,12 @@ async function main() {
   console.log('🌱 Starting database seeding...');
 
   // 1. Clear existing data in reverse order of dependencies
+  await prisma.token.deleteMany();
+  await prisma.emailLog.deleteMany();
+  await prisma.notificationDispatch.deleteMany();
+  await prisma.notification.deleteMany();
+  await prisma.notificationPreference.deleteMany();
+  await prisma.webPushSubscription.deleteMany();
   await prisma.bankSubaccount.deleteMany();
   await prisma.clinicalNote.deleteMany();
   await prisma.universalFormSubmission.deleteMany();
