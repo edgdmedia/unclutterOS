@@ -24,6 +24,10 @@ export class CsrfGuard implements CanActivate {
       return true;
     }
 
+    if (process.env.DISABLE_CSRF === 'true') {
+      return true;
+    }
+
     const hasSession = req.cookies?.[ACCESS_COOKIE] || req.cookies?.[REFRESH_COOKIE];
     if (!hasSession) return true;
 

@@ -484,6 +484,7 @@ export class ConsultService {
             subaccount: splitConfig.paystackSubaccountCode || undefined,
             bearer: 'subaccount',
             split: splitConfig.tier === 'STARTER' ? 5 : undefined,
+            callback_url: dto.callbackUrl,
           });
 
           paymentUrl = pTx.authorization_url;

@@ -44,12 +44,14 @@ export class PaystackService {
     subaccount?: string;
     bearer?: string; // 'account' | 'subaccount'
     split?: number; // percentage platform fee, e.g. 5
+    callback_url?: string;
   }) {
     const payload: any = {
       amount: dto.amount,
       email: dto.email,
       reference: dto.reference,
       channels: ['card', 'bank_transfer', 'ussd'],
+      callback_url: dto.callback_url,
     };
 
     if (dto.subaccount) {
