@@ -46,15 +46,7 @@ export function SignupPage() {
         persona,
         alsoTherapist: persona === 'practice' ? alsoTherapist : undefined,
       });
-      navigate('/onboarding', {
-        state: {
-          practiceName: practiceName.trim(),
-          fullName: fullName.trim(),
-          email,
-          persona,
-          alsoTherapist: persona === 'practice' ? alsoTherapist : false,
-        },
-      });
+      navigate('/verify-email', { state: { email } });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to create your practice. Please try again.');
     }

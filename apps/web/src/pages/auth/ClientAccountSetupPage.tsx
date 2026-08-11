@@ -28,7 +28,7 @@ export function ClientAccountSetupPage() {
         lastName: rest.join(' '),
         type: 'user',
       });
-      navigate('/dashboard');
+      navigate('/verify-email', { state: { email } });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to create client account');
     } finally {

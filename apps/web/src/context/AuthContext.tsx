@@ -28,8 +28,15 @@ interface AuthContextValue {
     practiceName: string;
     persona: 'therapist' | 'practice';
     alsoTherapist?: boolean;
-  }) => Promise<AuthProfile>;
+  }) => Promise<RegisterResult>;
   logout: () => Promise<void>;
+}
+
+export interface RegisterResult {
+  message: string;
+  verification_required: boolean;
+  email_sent: boolean;
+  profile_id?: string;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -114,7 +121,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const register = useCallback(
     async (data: { firstName: string; lastName: string; email: string; password: string; practiceName: string; persona: 'therapist' | 'practice'; alsoTherapist?: boolean }) => {
       const handle = data.practiceName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'practice';
-      const res = await api.post<{ profile: AuthProfile }>(
+      // Registration creates an unverified profile. The user must verify their
+      // email (6-digit code) before logging in — so no session is established here.
+      const res = await api.post<RegisterResult>(
         '/v1/auth/register',
         {
           firstName: data.firstName,
@@ -128,9 +137,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         },
         { 'X-Tenant-Slug': '' },
       );
-      setProfile(res.profile);
-      cacheProfile(res.profile);
-      return res.profile;
+      return res;
     },
     [],
   );

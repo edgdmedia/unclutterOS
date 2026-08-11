@@ -4,25 +4,22 @@ import {
   UnauthorizedException,
   NotFoundException,
   ForbiddenException,
+  Logger,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
+import { createHash } from 'crypto';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { JwtPayload } from './jwt.strategy';
-import {
-  JWT_EXPIRES_IN,
-  REFRESH_SECRET,
-  REFRESH_EXPIRES_IN,
-  VERIFY_SECRET,
-  VERIFY_EXPIRES_IN,
-  APP_URL,
-} from '../../common/auth.config';
+import { JWT_EXPIRES_IN, REFRESH_SECRET, REFRESH_EXPIRES_IN } from '../../common/auth.config';
 import { MailService } from '../mail/mail.service';
 
 const BCRYPT_ROUNDS = 12;
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
@@ -136,58 +133,86 @@ export class AuthService {
     }
 
     // New accounts must verify their email before they can sign in. If a
-    // profile already existed and was verified, skip the re-verification.
+    // profile already existed and was verified, skip re-verification.
     const alreadyVerified = profile.emailVerified === true;
+    let emailSent = false;
     if (!alreadyVerified) {
-      await this.sendVerificationEmail(profile.email, profile.id);
+      const code = await this.createEmailVerificationCode(user.id);
+      try {
+        const result = await this.mailService.sendVerificationEmail(profile.email, code);
+        emailSent = !!result.sent;
+      } catch (err) {
+        this.logger.warn(`Failed to send verification email to ${profile.email}: ${(err as Error).message}`);
+      }
     }
 
     return {
-      profile: {
-        id: profile.id.toString(),
-        email: profile.email,
-        username: profile.username,
-        firstName: profile.firstName,
-        lastName: profile.lastName,
-        type: profile.type,
-        status: profile.status,
-        emailVerified: profile.emailVerified,
-      },
-      verificationRequired: !alreadyVerified,
+      message: 'Registration successful. Please verify your email before logging in.',
+      verification_required: !alreadyVerified,
+      email_sent: emailSent,
+      profile_id: profile.id.toString(),
     };
   }
 
-  private async sendVerificationEmail(email: string, profileId: bigint) {
-    const token = await this.jwtService.signAsync(
-      { sub: profileId.toString(), purpose: 'email-verification' },
-      { secret: VERIFY_SECRET, expiresIn: VERIFY_EXPIRES_IN },
-    );
-    const verifyLink = `${APP_URL}/verify-email?token=${encodeURIComponent(token)}&email=${encodeURIComponent(email)}`;
-    await this.mailService.sendVerificationEmail(email, verifyLink);
+  private hashToken(token: string): string {
+    return createHash('sha256').update(token).digest('hex');
   }
 
-  async verifyEmail(dto: { token: string }) {
-    let payload: { sub?: string; purpose?: string };
-    try {
-      payload = await this.jwtService.verifyAsync(dto.token, { secret: VERIFY_SECRET });
-    } catch {
-      throw new BadRequestException('This verification link is invalid or has expired. Please request a new one.');
+  private parseDuration(input: string | undefined, fallbackMs: number): number {
+    const match = (input || '').match(/^(\d+)([smhd])$/);
+    if (!match) return fallbackMs;
+    const value = parseInt(match[1], 10);
+    switch (match[2]) {
+      case 's': return value * 1000;
+      case 'm': return value * 60 * 1000;
+      case 'h': return value * 60 * 60 * 1000;
+      case 'd': return value * 24 * 60 * 60 * 1000;
+      default: return fallbackMs;
     }
-    if (payload.purpose !== 'email-verification' || !payload.sub) {
-      throw new BadRequestException('This verification link is invalid or has expired. Please request a new one.');
+  }
+
+  private async createEmailVerificationCode(userId: bigint) {
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const tokenHash = this.hashToken(code);
+    const expiresAt = new Date(
+      Date.now() + this.parseDuration(process.env.EMAIL_VERIFICATION_EXPIRES_IN, 30 * 60 * 1000),
+    );
+
+    await this.prisma.token.deleteMany({
+      where: { userId, type: 'email_verification' },
+    });
+
+    await this.prisma.token.create({
+      data: {
+        id: `${userId.toString()}-email-verification-${Date.now()}`,
+        userId,
+        type: 'email_verification',
+        tokenHash,
+        expiresAt,
+      },
+    });
+
+    return code;
+  }
+
+  async verifyEmail(dto: { email: string; code: string }) {
+    const email = dto.email.toLowerCase().trim();
+    const user = await this.prisma.user.findUnique({ where: { email } });
+    if (!user) throw new BadRequestException('Invalid email or verification code');
+
+    const token = await this.prisma.token.findFirst({
+      where: { userId: user.id, type: 'email_verification', tokenHash: this.hashToken(dto.code) },
+    });
+    if (!token) throw new BadRequestException('Invalid email or verification code');
+    if (token.expiresAt < new Date()) {
+      throw new BadRequestException('Verification code expired. Please request a new one.');
     }
 
-    const profile = await this.prisma.profile.findUnique({ where: { id: BigInt(payload.sub) } });
-    if (!profile) {
-      throw new BadRequestException('This verification link is invalid or has expired. Please request a new one.');
-    }
+    const profile = await this.prisma.profile.findFirst({ where: { userId: user.id } });
+    if (!profile) throw new BadRequestException('Profile not found');
 
-    if (profile.emailVerified) {
-      return { success: true, alreadyVerified: true, email: profile.email };
-    }
-
-    await this.prisma.profile.update({
-      where: { id: profile.id },
+    await this.prisma.profile.updateMany({
+      where: { userId: user.id },
       data: {
         emailVerified: true,
         emailVerifiedAt: new Date(),
@@ -195,22 +220,31 @@ export class AuthService {
       },
     });
 
-    return { success: true, alreadyVerified: false, email: profile.email };
+    await this.prisma.token.deleteMany({ where: { userId: user.id, type: 'email_verification' } });
+
+    return { message: 'Email verified successfully', success: true, email: profile.email };
   }
 
-  async resendVerification(tenantId: bigint | undefined, dto: { email: string }) {
+  async resendVerification(dto: { email: string }) {
     const email = dto.email.toLowerCase().trim();
-    const profile = await this.prisma.profile.findFirst({
-      where: tenantId ? { tenantId, email } : { email },
-      orderBy: { createdAt: 'desc' },
-    });
+    const user = await this.prisma.user.findUnique({ where: { email } });
+    if (!user) throw new BadRequestException('No account found for this email');
 
+    const profile = await this.prisma.profile.findFirst({ where: { userId: user.id } });
     if (!profile || profile.emailVerified) {
-      return { success: true, alreadyVerified: true };
+      return { message: 'Email already verified', success: true, alreadyVerified: true };
     }
 
-    await this.sendVerificationEmail(profile.email, profile.id);
-    return { success: true, alreadyVerified: false };
+    const code = await this.createEmailVerificationCode(user.id);
+    let emailSent = false;
+    try {
+      const result = await this.mailService.sendVerificationEmail(email, code);
+      emailSent = !!result.sent;
+    } catch (err) {
+      this.logger.warn(`Failed to resend verification email to ${email}: ${(err as Error).message}`);
+    }
+
+    return { message: 'Verification code sent', success: true, email_sent: emailSent, alreadyVerified: false };
   }
 
   async loginPlatformAdmin(dto: { email: string; password: string }) {
@@ -267,7 +301,7 @@ export class AuthService {
     const { accessToken, refreshToken } = this.generateTokens(
       profile.user.id,
       profile.id,
-      tenantId,
+      profile.tenantId,
       profile.type,
     );
 

@@ -1,8 +1,16 @@
+import { config } from 'dotenv';
+import * as path from 'path';
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import * as cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
+
+// Load root .env (repo root relative to dist/main.js) and any cwd .env so SMTP,
+// secrets, etc. work in local dev. Existing process env wins (dotenv never
+// overrides already-set variables).
+config({ path: path.resolve(__dirname, '../../..', '.env'), quiet: true });
+config({ path: path.resolve(process.cwd(), '.env'), quiet: true });
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);

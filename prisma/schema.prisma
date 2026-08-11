@@ -36,11 +36,21 @@ model Tenant {
   
   subscriptionTier  String   @default("STARTER") // "STARTER", "PRO", "CLINIC"
   isActive          Boolean  @default(true)
+
+  // Notification plug-in: which channels this tenant has enabled at all.
+  // JSON map, e.g. { "email": true, "in_app": true, "push": true, "sms": false }
+  notificationChannels Json     @default("{\"in_app\":true,\"email\":true,\"push\":true,\"sms\":false}")
+
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
-  profiles          Profile[]
-  therapists        ConsultTherapistProfile[]
+  profiles                Profile[]
+  therapists              ConsultTherapistProfile[]
+  notifications           Notification[]
+  notificationDispatches  NotificationDispatch[]
+  notificationPreferences NotificationPreference[]
+  emailLogs               EmailLog[]
+  pushSubscriptions       WebPushSubscription[]
   services          ConsultService[]
   availabilities    ConsultAvailability[]
   bookings          ConsultBooking[]
@@ -69,6 +79,26 @@ model User {
 
   platformRole        String?   // "SUPER_ADMIN", "ADMIN" — platform-level staff, no tenant context
   profiles            Profile[]
+  tokens              Token[]
+}
+
+model Token {
+  id         String    @id
+  userId     BigInt
+  type       String
+  tokenHash  String    @unique
+  expiresAt  DateTime
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  revokedAt  DateTime?
+  lastUsedAt DateTime?
+  userAgent  String?
+  ipAddress  String?
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, type])
+  @@index([type, expiresAt])
 }
 
 model Profile {
@@ -96,6 +126,11 @@ model Profile {
   user                    User?                    @relation(fields: [userId], references: [id])
   consultTherapistProfile ConsultTherapistProfile?
   clientBookings          ConsultBooking[]         @relation("ClientBookings")
+  notifications           Notification[]
+  notificationDispatches  NotificationDispatch[]
+  notificationPreferences NotificationPreference[]
+  emailLogs               EmailLog[]
+  pushSubscriptions       WebPushSubscription[]
 
   @@unique([tenantId, email])
   @@unique([tenantId, username])
@@ -309,4 +344,120 @@ model BankSubaccount {
   updatedAt        DateTime @updatedAt
 
   tenant           Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
+
+// ── Notifications & Messaging ────────────────────────────────────────────────
+// Notification system: in-app rows, a dispatch queue (immediate + scheduled
+// reminders), per-profile channel preferences, an email delivery log, and
+// web-push subscriptions. Tenants opt into channels via `notificationChannels`.
+
+model Notification {
+  id          BigInt   @id @default(autoincrement())
+  tenantId    BigInt
+  profileId   BigInt
+  type        String // e.g. "consult.booking_confirmed", "billing.receipt"
+  title       String
+  message     String
+  link        String?
+  actionLabel String?
+  data        Json?
+  status      String   @default("unread") // "unread", "read", "archived"
+  readAt      DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant   Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  profile  Profile                @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  dispatch NotificationDispatch?
+
+  @@index([profileId, status])
+  @@index([profileId, createdAt])
+  @@index([tenantId, createdAt])
+}
+
+model NotificationDispatch {
+  id             BigInt    @id @default(autoincrement())
+  tenantId       BigInt
+  profileId      BigInt
+  type           String // module/event, e.g. "consult.reminder"
+  title          String
+  message        String
+  link           String?
+  actionLabel    String?
+  data           Json?
+  category       String? // "activity", "digests", "reminders"
+  channels       Json? // effective per-channel booleans: { in_app, email, push, sms }
+  status         String    @default("PENDING") // "PENDING", "PROCESSING", "SENT", "PARTIAL", "FAILED", "CANCELLED"
+  triggerAt      DateTime  @default(now())
+  sentAt         DateTime?
+  attempts       Int       @default(0)
+  dedupeKey      String?
+  lastError      String?
+  notificationId BigInt?   @unique
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  profile      Profile       @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  notification Notification? @relation(fields: [notificationId], references: [id])
+
+  @@unique([dedupeKey])
+  @@index([status, triggerAt])
+  @@index([tenantId, profileId])
+}
+
+model NotificationPreference {
+  id        BigInt  @id @default(autoincrement())
+  tenantId  BigInt
+  profileId BigInt
+  module    String // "notification", "consult", "billing", ...
+  category  String? // "activity", "digests", "reminders"
+  channel   String // "in_app", "email", "push", "sms"
+  enabled   Boolean @default(true)
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@unique([profileId, module, category, channel])
+  @@index([profileId])
+  @@index([tenantId])
+}
+
+model EmailLog {
+  id         BigInt    @id @default(autoincrement())
+  tenantId   BigInt
+  profileId  BigInt
+  type       String // module/event
+  to         String
+  subject    String
+  providerId String? // SMTP messageId
+  status     String // "SENT", "FAILED", "SKIPPED"
+  error      String?
+  createdAt  DateTime  @default(now())
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, createdAt])
+  @@index([profileId, createdAt])
+}
+
+model WebPushSubscription {
+  id         BigInt    @id @default(autoincrement())
+  tenantId   BigInt
+  profileId  BigInt
+  endpoint   String    @unique
+  p256dh     String
+  auth       String
+  userAgent  String?
+  isActive   Boolean   @default(true)
+  lastError  String?
+  lastSentAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId])
 }

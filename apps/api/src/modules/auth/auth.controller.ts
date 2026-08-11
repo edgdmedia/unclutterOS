@@ -31,15 +31,15 @@ export class AuthController {
   }
 
   @Post('verify-email')
-  @ApiOperation({ summary: 'Verify an email address using a signed token' })
-  async verifyEmail(@Body() dto: { token: string }) {
+  @ApiOperation({ summary: 'Verify an email address using a 6-digit code' })
+  async verifyEmail(@Body() dto: { email: string; code: string }) {
     return this.authService.verifyEmail(dto);
   }
 
   @Post('resend-verification')
-  @ApiOperation({ summary: 'Re-send the email verification link' })
-  async resendVerification(@Req() req: TenantRequest, @Body() dto: { email: string }) {
-    return this.authService.resendVerification(req.tenantId, dto);
+  @ApiOperation({ summary: 'Re-send the email verification code' })
+  async resendVerification(@Body() dto: { email: string }) {
+    return this.authService.resendVerification(dto);
   }
 
   @Post('login')

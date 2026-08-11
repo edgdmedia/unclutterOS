@@ -19,6 +19,8 @@ export interface BookingDetailsNotification {
   practiceLogoUrl?: string;
   primaryColor?: string;
   publicPhone?: string;
+  /** Reply-To address for client replies (e.g. the practice's public email). */
+  replyTo?: string;
 }
 
 @Injectable()
@@ -135,6 +137,8 @@ export class NotificationHubService {
       details.clientEmail,
       `Booking Confirmed: ${details.serviceName} with ${details.therapistName}`,
       html,
+      undefined,
+      { fromName: details.practiceName, replyTo: details.replyTo },
     );
   }
 
@@ -172,6 +176,8 @@ export class NotificationHubService {
       details.clientEmail,
       `Reminder: Session with ${details.therapistName} (${timeLabel})`,
       html,
+      undefined,
+      { fromName: details.practiceName, replyTo: details.replyTo },
     );
   }
 
@@ -183,7 +189,12 @@ export class NotificationHubService {
     clientName: string,
     formTitle: string,
     formUrl: string,
-    brand: { practiceName: string; primaryColor?: string; logoUrl?: string },
+    brand: {
+      practiceName: string;
+      primaryColor?: string;
+      logoUrl?: string;
+      replyTo?: string;
+    },
   ): Promise<void> {
     const content = `
       <h2 style="margin:0 0 12px;font-size:22px;font-weight:700;color:#0F172A;">Pre-Session Questionnaire</h2>
@@ -203,6 +214,8 @@ export class NotificationHubService {
       clientEmail,
       `Action Required: Complete ${formTitle} for ${brand.practiceName}`,
       html,
+      undefined,
+      { fromName: brand.practiceName, replyTo: brand.replyTo },
     );
   }
 }
