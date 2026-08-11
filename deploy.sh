@@ -28,10 +28,15 @@ npx prisma generate
 echo "🔨 Building NestJS API..."
 pnpm --filter @unclutteros/api run build
 
-# 5. Apply schema & seed. This repo uses prisma db push (no migrations dir).
-echo "🗄️ Applying Prisma schema & seeding..."
-npx prisma db push
-npx prisma db seed
+# 5. Run Prisma database migrations
+echo "🗄️ Running Prisma database migrations..."
+npx prisma migrate deploy
+
+# Only seed if explicitly requested via SEED_DB=true
+if [ "$SEED_DB" = "true" ]; then
+    echo "🌱 Seeding database..."
+    npx prisma db seed
+fi
 
 # 6. Reload PM2 process
 echo "🔄 Reloading PM2 process..."
