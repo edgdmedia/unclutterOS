@@ -62,8 +62,8 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ) {
     const result = await this.authService.login(req.tenantId, dto);
-    this.setSessionCookies(res, result.accessToken, result.refreshToken);
-    return { profile: result.profile };
+    const csrfToken = this.setSessionCookies(res, result.accessToken, result.refreshToken);
+    return { profile: result.profile, csrfToken };
   }
 
   @Post('refresh')
@@ -72,8 +72,8 @@ export class AuthController {
     const refreshToken = req.cookies?.[REFRESH_COOKIE];
     if (!refreshToken) throw new UnauthorizedException('No refresh token provided');
     const result = await this.authService.refresh(refreshToken);
-    this.setSessionCookies(res, result.accessToken, result.refreshToken);
-    return { profile: result.profile };
+    const csrfToken = this.setSessionCookies(res, result.accessToken, result.refreshToken);
+    return { profile: result.profile, csrfToken };
   }
 
   @Post('logout')
@@ -89,11 +89,14 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Get current session profile status' })
-  getStatus(@Req() req: any) {
+  async getStatus(@Req() req: any) {
+    const csrfToken = req.cookies?.[CSRF_COOKIE];
     if (req.user.type === 'platform_admin') {
-      return this.authService.getPlatformAdminStatus(BigInt(req.user.userId));
+      const result = await this.authService.getPlatformAdminStatus(BigInt(req.user.userId));
+      return { ...result, csrfToken };
     }
-    return this.authService.getSessionStatus(BigInt(req.user.profileId || req.user.userId));
+    const result = await this.authService.getSessionStatus(BigInt(req.user.profileId || req.user.userId));
+    return { ...result, csrfToken };
   }
 
   private setSessionCookies(res: Response, accessToken: string, refreshToken: string) {
@@ -102,6 +105,8 @@ export class AuthController {
       ...cookieOptions(REFRESH_COOKIE_MAX_AGE),
       path: '/v1/auth/refresh',
     });
-    res.cookie(CSRF_COOKIE, randomBytes(32).toString('hex'), csrfCookieOptions());
+    const csrfToken = randomBytes(32).toString('hex');
+    res.cookie(CSRF_COOKIE, csrfToken, csrfCookieOptions());
+    return csrfToken;
   }
 }

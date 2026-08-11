@@ -64,10 +64,17 @@ export function setSessionExpiredHandler(handler: SessionExpiredHandler): void {
   onSessionExpired = handler;
 }
 
+let memoryCsrfToken: string | null = null;
+
+export function setMemoryCsrfToken(token: string) {
+  memoryCsrfToken = token;
+}
+
 function getCsrfToken(): string | null {
-  const match = document.cookie
-    .split('; ')
-    .find((row) => row.startsWith(`${CSRF_COOKIE}=`));
+  if (memoryCsrfToken) return memoryCsrfToken;
+  const match = typeof document !== 'undefined' 
+    ? document.cookie.split('; ').find((row) => row.startsWith(`${CSRF_COOKIE}=`))
+    : null;
   return match ? decodeURIComponent(match.slice(CSRF_COOKIE.length + 1)) : null;
 }
 
@@ -97,6 +104,12 @@ async function requestRefresh(): Promise<boolean> {
           credentials: 'include',
           headers: buildHeaders(undefined, 'POST'),
         });
+        if (response.ok) {
+          const data = await response.json().catch(() => null);
+          if (data && typeof data === 'object' && 'csrfToken' in data && typeof data.csrfToken === 'string') {
+            memoryCsrfToken = data.csrfToken;
+          }
+        }
         return response.ok;
       } catch {
         return false;
@@ -175,7 +188,11 @@ export async function apiRequest<T = unknown>(
   // 204 No Content
   if (response.status === 204) return undefined as T;
 
-  return response.json() as Promise<T>;
+  const data = await response.json().catch(() => null);
+  if (data && typeof data === 'object' && 'csrfToken' in data && typeof data.csrfToken === 'string') {
+    memoryCsrfToken = data.csrfToken;
+  }
+  return data as T;
 }
 
 // ── Shorthand helpers ─────────────────────────────────────────────────────────
