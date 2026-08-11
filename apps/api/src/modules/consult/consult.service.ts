@@ -701,7 +701,7 @@ export class ConsultService {
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-    const [bookingsThisMonth, upcomingBookings, totalClientsCount, activeRosterCount] = await Promise.all([
+    const [bookingsThisMonth, upcomingBookings, totalClientsCount, activeRosterCount, availabilityCount, serviceCount, payoutCount] = await Promise.all([
       this.prisma.consultBooking.findMany({
         where: {
           tenantId,
@@ -726,16 +726,27 @@ export class ConsultService {
       this.prisma.profile.count({
         where: { tenantId, type: 'therapist', status: 'active' },
       }),
+      this.prisma.consultAvailability.count({ where: { tenantId } }),
+      this.prisma.consultService.count({ where: { tenantId } }),
+      this.prisma.bankSubaccount.count({ where: { tenantId, isVerified: true } }),
     ]);
 
     const revenueThisMonthKobo = bookingsThisMonth.reduce((acc, b) => acc + (b.service?.priceKobo ? Number(b.service.priceKobo) : 0), 0);
     const revenueThisMonthNaira = revenueThisMonthKobo / 100;
+    const hasAvailability = availabilityCount > 0;
+    const hasService = serviceCount > 0;
+    const hasPayout = payoutCount > 0;
+    const onboardingCompleted = hasAvailability && hasService;
 
     return {
       revenueThisMonthNaira,
       scheduledSessionsCount: upcomingBookings.length,
       totalClientsCount,
       activeRosterCount: activeRosterCount || 1,
+      hasAvailability,
+      hasService,
+      hasPayout,
+      onboardingCompleted,
       upcomingSessions: upcomingBookings.map((b) => ({
         id: b.id.toString(),
         clientName: `${b.client.firstName || ''} ${b.client.lastName || ''}`.trim() || b.client.email,

@@ -32,12 +32,17 @@ export function DashboardPage(props: DashboardPageProps) {
     scheduledSessionsCount: number;
     totalClientsCount: number;
     activeRosterCount: number;
+    onboardingCompleted?: boolean;
+    hasAvailability?: boolean;
+    hasService?: boolean;
+    hasPayout?: boolean;
     upcomingSessions: any[];
   }>({
     revenueThisMonthNaira: 0,
     scheduledSessionsCount: 0,
     totalClientsCount: 0,
     activeRosterCount: 1,
+    onboardingCompleted: true,
     upcomingSessions: [],
   });
 
@@ -57,6 +62,10 @@ export function DashboardPage(props: DashboardPageProps) {
             scheduledSessionsCount: number;
             totalClientsCount: number;
             activeRosterCount: number;
+            onboardingCompleted?: boolean;
+            hasAvailability?: boolean;
+            hasService?: boolean;
+            hasPayout?: boolean;
             upcomingSessions: any[];
           }>('/v1/consult/dashboard/summary'),
         ]);
@@ -97,7 +106,7 @@ export function DashboardPage(props: DashboardPageProps) {
   const totalClients = summary.totalClientsCount || props.clients?.length || 0;
   const activeClients = summary.activeRosterCount || (props.clients?.filter(c => c.status === 'Active').length || 0);
 
-  const isNewPractice = summary.totalClientsCount === 0 && summary.revenueThisMonthNaira === 0;
+  const needsOnboarding = summary.onboardingCompleted === false || (summary.totalClientsCount === 0 && summary.revenueThisMonthNaira === 0);
 
   const monthlyBars = [
     { month: 'S', val: summary.revenueThisMonthNaira > 0 ? summary.revenueThisMonthNaira * 0.5 : 0 },
@@ -181,36 +190,31 @@ export function DashboardPage(props: DashboardPageProps) {
       <main className="p-[24px_26px_30px] grid grid-cols-[1fr_372px] gap-[20px] items-start">
         {/* Left Column */}
         <div className="space-y-[20px]">
-          {/* New Practice Setup Banner */}
-          {isNewPractice && (
+          {/* Practice Setup Onboarding Banner */}
+          {needsOnboarding && (
             <div className="p-5 rounded-2xl bg-gradient-to-r from-[#0F3A53] to-[#1E293B] text-white shadow-md border border-[#E3B341]/30 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
               <div>
                 <div className="flex items-center gap-2 mb-1">
                   <Sparkles className="h-5 w-5 text-[#E3B341]" />
-                  <h3 className="font-bold text-[16px] text-white">Welcome to UnclutterOS! Complete your practice setup</h3>
+                  <h3 className="font-bold text-[16px] text-white">Complete your practice onboarding setup</h3>
                 </div>
                 <p className="text-[13px] text-slate-300">
-                  Follow these 3 simple steps to start accepting client telehealth bookings and 0% fee direct payouts:
+                  Run the 3-step setup wizard to set your brand, session rates, working hours, and 0% fee direct payouts:
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-2 shrink-0">
                 <button
-                  onClick={() => navigate('/portal/settings/brand')}
-                  className="h-9 px-3.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold transition-colors"
+                  onClick={() => navigate('/onboarding')}
+                  className="h-9 px-4 rounded-xl bg-[#E3B341] text-[#0F172A] text-xs font-bold hover:bg-[#F0C558] transition-colors shadow-sm flex items-center gap-1.5 cursor-pointer"
                 >
-                  1. Brand Setup
-                </button>
-                <button
-                  onClick={() => navigate('/portal/settings/availability')}
-                  className="h-9 px-3.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold transition-colors"
-                >
-                  2. Working Hours
+                  <Sparkles className="h-3.5 w-3.5" />
+                  <span>Launch 3-Step Wizard</span>
                 </button>
                 <button
                   onClick={() => navigate('/portal/settings/payouts')}
-                  className="h-9 px-3.5 rounded-xl bg-[#E3B341] text-[#0F172A] text-xs font-bold hover:bg-[#F0C558] transition-colors shadow-sm"
+                  className="h-9 px-3 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold transition-colors"
                 >
-                  3. Connect Paystack Bank
+                  Payouts
                 </button>
               </div>
             </div>
