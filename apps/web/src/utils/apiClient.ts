@@ -12,7 +12,8 @@
  *   torn down via a session-expired handler.
  */
 
-const API_BASE = import.meta.env.VITE_API_URL || 'https://api.os.unclutter.com.ng';
+const DEFAULT_API_BASE = import.meta.env.DEV ? 'http://localhost:3001' : 'https://api.os.unclutter.com.ng';
+const API_BASE = import.meta.env.VITE_API_URL || DEFAULT_API_BASE;
 
 export function getSubdomainTenantSlug(): string | null {
   if (typeof window === 'undefined') return null;
@@ -27,7 +28,9 @@ export function getSubdomainTenantSlug(): string | null {
 }
 
 export const TENANT_SLUG = import.meta.env.VITE_TENANT_SLUG || getSubdomainTenantSlug() || '';
-export const APP_BASE_URL = import.meta.env.VITE_APP_URL || 'https://os.unclutter.com.ng';
+const DEFAULT_APP_BASE = import.meta.env.DEV && typeof window !== 'undefined' ? window.location.origin : 'https://os.unclutter.com.ng';
+export const APP_BASE_URL = import.meta.env.VITE_APP_URL || DEFAULT_APP_BASE;
+
 export function getBookingUrl(slug: string): string {
   return `${APP_BASE_URL}/booking/${slug}`;
 }
