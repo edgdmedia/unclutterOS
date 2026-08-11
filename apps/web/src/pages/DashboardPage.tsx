@@ -77,7 +77,12 @@ export function DashboardPage(props: DashboardPageProps) {
         setProfileTitle(profile.specialty || 'Clinical Psychologist');
         setProfileAvatar(profile.avatarUrl || null);
         setUnreadCount(notifications.filter((item) => item.unread).length);
-        if (dashSummary) setSummary(dashSummary);
+        if (dashSummary) {
+          setSummary(dashSummary);
+          if (dashSummary.onboardingCompleted === false) {
+            navigate('/onboarding');
+          }
+        }
       } catch {
         // Best-effort only; the rest of the dashboard is already derived from live props.
       }
@@ -87,7 +92,7 @@ export function DashboardPage(props: DashboardPageProps) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [navigate]);
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(bookingUrl);
@@ -104,11 +109,11 @@ export function DashboardPage(props: DashboardPageProps) {
   ];
 
   // Derive dynamic stats from backend summary or props
-  const totalSessions = summary.scheduledSessionsCount || props.sessions?.length || 0;
-  const totalClients = summary.totalClientsCount || props.clients?.length || 0;
-  const activeClients = summary.activeRosterCount || (props.clients?.filter(c => c.status === 'Active').length || 0);
+  const totalSessions = summary.scheduledSessionsCount ?? 0;
+  const totalClients = summary.totalClientsCount ?? 0;
+  const activeClients = summary.activeRosterCount ?? 0;
 
-  const needsOnboarding = summary.onboardingCompleted === false || (summary.totalClientsCount === 0 && summary.revenueThisMonthNaira === 0);
+  const needsOnboarding = summary.onboardingCompleted === false;
 
   const monthlyBars = [
     { month: 'S', val: summary.revenueThisMonthNaira > 0 ? summary.revenueThisMonthNaira * 0.5 : 0 },
