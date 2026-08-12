@@ -696,10 +696,7 @@ export function SchedulePage({ sessions, setSessions, clients }: SchedulePagePro
         </div>
       )}
 
-      {/* Set Availability Modal */}
-      {showAvailabilityModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center p-6 z-50 animate-fade-in">
-      )}
+
       {/* Session Complete / SOAP Note Prompt Modal */}
       {sessionCompleteEvent && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center p-6 z-50 animate-fade-in">

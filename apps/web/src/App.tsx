@@ -26,6 +26,8 @@ const ClientPortalPage = lazy(() => import('./pages/ClientPortalPage').then((m) 
 const OnboardingWizardPage = lazy(() => import('./pages/OnboardingWizardPage').then((m) => ({ default: m.OnboardingWizardPage })));
 const ClientBookingPage = lazy(() => import('./pages/ClientBookingPage').then((m) => ({ default: m.ClientBookingPage })));
 const PublicReviewFormPage = lazy(() => import('./pages/PublicReviewFormPage').then((m) => ({ default: m.PublicReviewFormPage })));
+const PrivacyPolicyPage = lazy(() => import('./pages/PrivacyPolicyPage').then((m) => ({ default: m.PrivacyPolicyPage })));
+const TermsOfServicePage = lazy(() => import('./pages/TermsOfServicePage').then((m) => ({ default: m.TermsOfServicePage })));
 const BookingConfirmedPage = lazy(() => import('./pages/BookingConfirmedPage').then((m) => ({ default: m.BookingConfirmedPage })));
 const InactivePracticePage = lazy(() => import('./pages/InactivePracticePage').then((m) => ({ default: m.InactivePracticePage })));
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage').then((m) => ({ default: m.NotificationsPage })));
@@ -391,6 +393,8 @@ function AppLayout() {
 
             {/* Public landing page */}
             <Route path="/" element={isAuthenticated ? <Navigate to="/portal" replace /> : <LandingPage />} />
+            <Route path="/privacy" element={<PrivacyPolicyPage />} />
+            <Route path="/terms" element={<TermsOfServicePage />} />
 
             {/* Auth Routes */}
             <Route path="/auth/login" element={<LoginPage />} />

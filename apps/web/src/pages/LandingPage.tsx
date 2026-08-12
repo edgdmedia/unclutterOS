@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { AppWindow, Check, ChevronLeft, ChevronRight, CreditCard, Play, Video } from 'lucide-react';
 import { UnclutterLockup } from '@unclutteros/ui';
 
