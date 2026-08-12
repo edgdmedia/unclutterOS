@@ -560,6 +560,7 @@ function FeatureShowcase() {
 
 function Pricing() {
   const [plan, setPlan] = useState(1);
+  const navigate = useNavigate();
 
   return (
     <section id="pricing" className={`${scrollCls} bg-white border-y border-[rgba(15,23,42,0.06)] px-6 lg:px-10 py-24`}>
@@ -630,7 +631,10 @@ function Pricing() {
                         ? 'bg-[#0F3A53] text-white border-[#0F3A53] hover:bg-[#1B5375]'
                         : 'bg-white text-[#0F172A] border-[rgba(15,23,42,0.14)] hover:bg-[#F1F5F9]'
                   }`}
-                  onClick={() => setPlan(i)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    navigate('/register');
+                  }}
                 >
                   {p.cta}
                 </button>
