@@ -9,7 +9,7 @@ existing UnclutterOS handoff conventions (`design_handoff_unclutteros`,
 
 Design the public marketing landing page for UnclutterOS, a B2B practice-management
 and white-label telehealth platform for therapists and clinics in Nigeria. This is
-the guest-facing site served at `os.unclutter.com.ng/` — it sits **before** the
+the guest-facing site served at `os.unclutterdesk.com/` — it sits **before** the
 login and uses its own marketing chrome (top nav, hero, sections, footer), NOT the
 slate app sidebar. Its jobs: explain the product, sell the white-label idea, present
 pricing, and convert visitors to the 14-day free trial (`/register`) or login

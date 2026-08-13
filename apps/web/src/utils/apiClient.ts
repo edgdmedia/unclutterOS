@@ -12,13 +12,13 @@
  *   torn down via a session-expired handler.
  */
 
-const DEFAULT_API_BASE = import.meta.env.DEV ? 'http://localhost:3001' : 'https://api.os.unclutter.com.ng';
+const DEFAULT_API_BASE = import.meta.env.DEV ? 'http://localhost:3001' : 'https://api.unclutterdesk.com';
 const API_BASE = import.meta.env.VITE_API_URL || DEFAULT_API_BASE;
 
 export function getSubdomainTenantSlug(): string | null {
   if (typeof window === 'undefined') return null;
   const host = window.location.hostname;
-  if (host.endsWith('.os.unclutter.com.ng')) {
+  if (host.endsWith('.os.unclutterdesk.com')) {
     const parts = host.split('.');
     if (parts.length >= 4 && parts[0] !== 'os' && parts[0] !== 'www') {
       return parts[0];
@@ -28,12 +28,12 @@ export function getSubdomainTenantSlug(): string | null {
 }
 
 export const TENANT_SLUG = import.meta.env.VITE_TENANT_SLUG || getSubdomainTenantSlug() || '';
-const DEFAULT_APP_BASE = import.meta.env.DEV && typeof window !== 'undefined' ? window.location.origin : 'https://os.unclutter.com.ng';
+const DEFAULT_APP_BASE = import.meta.env.DEV && typeof window !== 'undefined' ? window.location.origin : 'https://os.unclutterdesk.com';
 export const APP_BASE_URL = import.meta.env.VITE_APP_URL || DEFAULT_APP_BASE;
 
 export function getBookingUrl(slug: string): string {
-  if (!slug) return 'https://os.unclutter.com.ng';
-  return `https://${slug}.os.unclutter.com.ng`;
+  if (!slug) return 'https://os.unclutterdesk.com';
+  return `https://${slug}.os.unclutterdesk.com`;
 }
 
 const CSRF_COOKIE = 'unclutter_csrf';

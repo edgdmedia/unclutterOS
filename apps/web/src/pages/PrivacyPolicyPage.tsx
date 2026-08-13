@@ -22,7 +22,7 @@ export function PrivacyPolicyPage() {
           <p>Unclutter OS uses Google Calendar APIs to sync your schedule. Our use of information received from Google APIs will adhere to the Google API Services User Data Policy, including the Limited Use requirements.</p>
 
           <h2 className="text-xl font-bold text-slate-800 mt-6 mb-2">5. Contact Us</h2>
-          <p>If you have any questions about this Privacy Policy, please contact us at support@unclutter.com.ng.</p>
+          <p>If you have any questions about this Privacy Policy, please contact us at support@unclutterdesk.com.</p>
         </div>
       </div>
     </div>

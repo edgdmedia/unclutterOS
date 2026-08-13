@@ -27,7 +27,7 @@ export class CalendarController {
     await this.calendarService.handleCallback(code, state);
     // Redirect back to the frontend settings page
     const frontendUrl = process.env.NODE_ENV === 'production'
-      ? 'https://os.unclutter.com.ng/portal/settings/availability?google_connected=true'
+      ? 'https://os.unclutterdesk.com/portal/settings/availability?google_connected=true'
       : 'http://localhost:3000/portal/settings/availability?google_connected=true';
     res.redirect(frontendUrl);
   }

@@ -12,7 +12,7 @@ export class CalendarService {
       process.env.GOOGLE_CLIENT_ID,
       process.env.GOOGLE_CLIENT_SECRET,
       process.env.NODE_ENV === 'production' 
-        ? 'https://api.os.unclutter.com.ng/v1/calendar/google/callback'
+        ? 'https://api.unclutterdesk.com/v1/calendar/google/callback'
         : 'http://localhost:3001/v1/calendar/google/callback'
     );
   }

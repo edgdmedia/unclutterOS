@@ -27,7 +27,7 @@ async function bootstrap() {
     origin: (origin, callback) => {
       if (
         !origin ||
-        origin.endsWith('unclutter.com.ng') ||
+        origin.endsWith('unclutterdesk.com') ||
         origin.endsWith('pages.dev') ||
         origin.includes('localhost')
       ) {

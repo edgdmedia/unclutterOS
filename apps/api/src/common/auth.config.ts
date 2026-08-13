@@ -1,12 +1,11 @@
 import { randomBytes } from 'crypto';
 
-export const IS_PROD = process.env.NODE_ENV === 'production';
+const IS_PROD = process.env.NODE_ENV === 'production';
 
-// The web app (os.unclutter.com.ng) and API (api.os.unclutter.com.ng) are
-// sibling subdomains. The double-submit CSRF cookie must be readable by the
-// web app's JS so it can echo the value back in X-CSRF-Token, so it is scoped
-// to the shared parent domain instead of staying host-only to the API.
-const COOKIE_DOMAIN = process.env.COOKIE_DOMAIN || (IS_PROD ? '.unclutter.com.ng' : undefined);
+// The web app (os.unclutterdesk.com) and API (api.unclutterdesk.com) are
+// served from different subdomains (or localhost ports in dev).
+
+const COOKIE_DOMAIN = process.env.COOKIE_DOMAIN || (IS_PROD ? '.unclutterdesk.com' : undefined);
 
 function resolveSecret(name: string): string {
   const fromEnv = process.env[name];

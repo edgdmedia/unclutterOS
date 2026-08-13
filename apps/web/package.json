@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "deploy": "wrangler pages deploy dist --project-name=unclutter-os",
+    "deploy": "wrangler pages deploy dist --project-name=unclutter-desk",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit"
   },
